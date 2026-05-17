@@ -436,17 +436,6 @@ export default defineConfig({
           { text: 'Roadmap', link: '/reference/roadmap' },
         ],
       },
-      {
-        text: 'Development',
-        items: [
-          { text: 'Project Organization', link: '/development/project-organization' },
-          { text: 'Release Versioning Improvements', link: '/development/release-versioning-improvements' },
-          { text: 'Release Changelogs', link: '/development/release-changelogs' },
-          { text: 'Display Sizing Notes', link: '/development/display-sizing' },
-          { text: 'Climate Control Spec', link: '/development/climate-control' },
-          { text: 'Light Modal UX Plan', link: '/development/light-modal-ux-plan' },
-        ],
-      },
     ],
 
     editLink: {
