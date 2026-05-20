@@ -378,6 +378,9 @@ inline void grid_phase1(
   uint32_t on_val = parse_hex_color(on_hex, has_on);
   uint32_t off_val = parse_hex_color(off_hex, has_off);
   uint32_t sensor_val = parse_hex_color(sensor_hex, has_sensor_color);
+  if (has_on) on_val = correct_display_color(on_val);
+  if (has_off) off_val = correct_display_color(off_val);
+  if (has_sensor_color) sensor_val = correct_display_color(sensor_val);
 
   CardPalette palette;
   palette.has_on = has_on;
@@ -470,6 +473,9 @@ inline void grid_phase2(
   uint32_t on_val = parse_hex_color(on_hex, has_on);
   uint32_t off_val = parse_hex_color(off_hex, has_off);
   uint32_t sensor_val = parse_hex_color(sensor_hex, has_sensor_color);
+  if (has_on) on_val = correct_display_color(on_val);
+  if (has_off) off_val = correct_display_color(off_val);
+  if (has_sensor_color) sensor_val = correct_display_color(sensor_val);
 
   CardPalette palette;
   palette.has_on = has_on;
