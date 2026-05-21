@@ -665,7 +665,11 @@ inline lv_obj_t *alarm_create_key_button(lv_obj_t *parent, lv_coord_t width,
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label && label_zoom != 256) {
+    lv_obj_update_layout(label);
+    lv_coord_t offset_x = lv_obj_get_width(label) * (256 - label_zoom) / 512;
+    lv_coord_t offset_y = lv_obj_get_height(label) * (256 - label_zoom) / 512;
     lv_obj_set_style_transform_zoom(label, label_zoom, LV_PART_MAIN);
+    lv_obj_align(label, LV_ALIGN_CENTER, offset_x, offset_y);
   }
   return btn;
 }
