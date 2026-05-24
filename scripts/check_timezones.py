@@ -8,12 +8,16 @@ import os
 import re
 import sys
 import time
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 ROOT = Path(__file__).resolve().parent.parent
 TIME_YAML = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_H = ROOT / "components" / "espcontrol" / "sun_calc.h"
+
+ZONEINFO_ALIASES = {
+    "Asia/Rangoon": "Asia/Yangon",
+}
 
 
 def load_timezone_options() -> dict[str, str]:
@@ -94,7 +98,11 @@ def posix_offset_minutes(posix: str, dt: datetime) -> int:
 
 
 def iana_offset_minutes(tz_id: str, dt: datetime) -> int:
-    return int(dt.astimezone(ZoneInfo(tz_id)).utcoffset().total_seconds() // 60)
+    try:
+        zone = ZoneInfo(tz_id)
+    except ZoneInfoNotFoundError:
+        zone = ZoneInfo(ZONEINFO_ALIASES.get(tz_id, tz_id))
+    return int(dt.astimezone(zone).utcoffset().total_seconds() // 60)
 
 
 def firmware_offset_minutes(
