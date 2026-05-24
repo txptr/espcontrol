@@ -25,10 +25,12 @@ enum class ControlModalKind {
   ALARM_CONTROL,
 };
 
+using ControlModalCloseCallback = void (*)();
+
 struct ControlModalActive {
   ControlModalKind kind = ControlModalKind::NONE;
   lv_obj_t *overlay = nullptr;
-  void (*close_callback)() = nullptr;
+  ControlModalCloseCallback close_callback = nullptr;
   bool closing = false;
 };
 
@@ -47,7 +49,7 @@ inline void control_modal_clear_active(ControlModalKind kind) {
 }
 
 inline void control_modal_set_active(ControlModalKind kind, lv_obj_t *overlay,
-                                     void (*close_callback)()) {
+                                     ControlModalCloseCallback close_callback) {
   ControlModalActive &active = control_modal_active();
   active.kind = kind;
   active.overlay = overlay;
@@ -128,6 +130,16 @@ struct ControlModalShell {
   ControlModalLayout layout;
   lv_coord_t content_w = 0;
 };
+
+struct ControlModalNestedShell {
+  lv_obj_t *overlay = nullptr;
+  lv_obj_t *panel = nullptr;
+};
+
+inline ControlModalCloseCallback &control_modal_nested_close_callback() {
+  static ControlModalCloseCallback callback = nullptr;
+  return callback;
+}
 
 inline lv_coord_t control_modal_scaled_px(lv_coord_t px, lv_coord_t short_side) {
   return px * short_side / CONTROL_MODAL_REFERENCE_SIDE_PX;
@@ -324,7 +336,7 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
                                                   const lv_font_t *icon_font,
                                                   const char *button_text,
                                                   bool button_top_right,
-                                                  void (*close_callback)()) {
+                                                  ControlModalCloseCallback close_callback) {
   control_modal_close_active();
 
   ControlModalShell shell;
@@ -351,6 +363,52 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
   }
 
   control_modal_set_active(kind, shell.overlay, close_callback);
+  return shell;
+}
+
+inline void control_modal_style_nested_overlay(lv_obj_t *overlay) {
+  if (!overlay) return;
+  lv_obj_set_size(overlay, lv_pct(100), lv_pct(100));
+  lv_obj_set_style_bg_color(overlay, lv_color_hex(DARK_OVERLAY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(overlay, LV_OPA_50, LV_PART_MAIN);
+  lv_obj_set_style_border_width(overlay, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(overlay, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+inline void control_modal_style_nested_panel(lv_obj_t *panel, lv_coord_t radius) {
+  if (!panel) return;
+  lv_obj_set_height(panel, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_color(panel, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(panel, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(panel, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(panel, radius, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(panel, 14, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(panel, 10, LV_PART_MAIN);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(panel, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
+  lv_obj_align(panel, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+inline ControlModalNestedShell control_modal_open_nested_menu(lv_coord_t width,
+                                                              lv_coord_t radius,
+                                                              ControlModalCloseCallback close_callback) {
+  ControlModalNestedShell shell;
+  control_modal_nested_close_callback() = close_callback;
+  shell.overlay = lv_obj_create(lv_layer_top());
+  control_modal_style_nested_overlay(shell.overlay);
+  if (close_callback) {
+    lv_obj_add_event_cb(shell.overlay, [](lv_event_t *) {
+      ControlModalCloseCallback callback = control_modal_nested_close_callback();
+      if (callback) callback();
+    }, LV_EVENT_CLICKED, nullptr);
+  }
+
+  shell.panel = lv_obj_create(shell.overlay);
+  lv_obj_set_width(shell.panel, width);
+  control_modal_style_nested_panel(shell.panel, radius);
   return shell;
 }
 

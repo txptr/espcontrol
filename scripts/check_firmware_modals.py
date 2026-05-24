@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard firmware modal row click payloads against heap allocation."""
+"""Guard firmware modal code against repeated row allocation and ad hoc shells."""
 
 from __future__ import annotations
 
@@ -14,19 +14,29 @@ FORBIDDEN_ALLOCATIONS = (
     "FanPresetClick",
     "OptionSelectOptionClick",
 )
+LAYER_TOP_ALLOWLIST = {
+    "button_grid_modal.h",
+    "button_grid_alarm.h",
+}
 
 
 def main() -> int:
-    pattern = re.compile(r"\bnew\s+(" + "|".join(FORBIDDEN_ALLOCATIONS) + r")\b")
+    allocation_pattern = re.compile(r"\bnew\s+(" + "|".join(FORBIDDEN_ALLOCATIONS) + r")\b")
+    layer_top_pattern = re.compile(r"\blv_obj_create\s*\(\s*lv_layer_top\s*\(\s*\)\s*\)")
     errors: list[str] = []
 
     for path in sorted(FIRMWARE_DIR.glob("button_grid*.h")):
         for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-            match = pattern.search(line)
+            match = allocation_pattern.search(line)
             if match:
                 rel = path.relative_to(ROOT)
                 errors.append(
                     f"{rel}:{line_no}: avoid per-row heap allocation for {match.group(1)}"
+                )
+            if path.name not in LAYER_TOP_ALLOWLIST and layer_top_pattern.search(line):
+                rel = path.relative_to(ROOT)
+                errors.append(
+                    f"{rel}:{line_no}: open modal overlays through button_grid_modal.h helpers"
                 )
 
     if errors:

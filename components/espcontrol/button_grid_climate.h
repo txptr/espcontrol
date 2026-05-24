@@ -1153,30 +1153,10 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
   if (!options || options->empty()) return;
 
   ui.option_click_count = 0;
-  ui.menu_overlay = lv_obj_create(lv_layer_top());
-  lv_obj_set_size(ui.menu_overlay, lv_pct(100), lv_pct(100));
-  lv_obj_set_style_bg_color(ui.menu_overlay, lv_color_hex(DARK_OVERLAY), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.menu_overlay, LV_OPA_50, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.menu_overlay, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.menu_overlay, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.menu_overlay, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_add_event_cb(ui.menu_overlay, [](lv_event_t *) {
-    climate_hide_option_menu();
-  }, LV_EVENT_CLICKED, nullptr);
-
-  lv_obj_t *box = lv_obj_create(ui.menu_overlay);
-  lv_obj_set_width(box, climate_option_menu_width(*options, kind) + 40);
-  lv_obj_set_height(box, LV_SIZE_CONTENT);
-  lv_obj_set_style_bg_color(box, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(box, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(box, 0, LV_PART_MAIN);
-  lv_obj_set_style_radius(box, 14, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(box, 14, LV_PART_MAIN);
-  lv_obj_set_style_pad_row(box, 10, LV_PART_MAIN);
-  lv_obj_set_layout(box, LV_LAYOUT_FLEX);
-  lv_obj_set_style_flex_flow(box, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
-  lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
-  lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
+  ControlModalNestedShell shell = control_modal_open_nested_menu(
+    climate_option_menu_width(*options, kind) + 40, 14, climate_hide_option_menu);
+  ui.menu_overlay = shell.overlay;
+  lv_obj_t *box = shell.panel;
 
   lv_coord_t option_h = ctx->option_menu_font ? ctx->option_menu_font->line_height + 24 : 68;
   if (option_h < 68) option_h = 68;
