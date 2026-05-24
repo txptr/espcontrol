@@ -1196,17 +1196,20 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     buttonTypePreviewFor: function (type, button, options) {
       var oldTimezone = state.timezone;
       var oldUnit = state.temperatureUnit;
+      var oldClockFormat = state.clockFormat;
       options = options || {};
       if (options.timezone != null) state.timezone = options.timezone;
       if (options.temperatureUnit != null) {
         state.temperatureUnit = normalizeTemperatureUnit(options.temperatureUnit);
       }
+      if (options.clockFormat != null) state.clockFormat = options.clockFormat;
       var typeDef = BUTTON_TYPES[type || ""];
       var preview = typeDef && typeDef.renderPreview
         ? typeDef.renderPreview(button || {}, { escHtml: escHtml, cardSize: options.cardSize || 1 })
         : null;
       state.timezone = oldTimezone;
       state.temperatureUnit = oldUnit;
+      state.clockFormat = oldClockFormat;
       return preview;
     },
     networkPreviewIconSlug: networkPreviewIconSlug,

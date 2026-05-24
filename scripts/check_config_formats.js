@@ -650,6 +650,28 @@ assertButtonRoundTrip(hooks, "cover set position command button", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "calendar date card", {
+  entity: "sensor.date",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "calendar",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "calendar date and time card", {
+  entity: "sensor.date",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "calendar",
+  precision: "datetime",
+}, false);
+
 assertButtonRoundTrip(hooks, "calendar large numbers option", {
   entity: "sensor.date",
   label: "",
@@ -683,6 +705,17 @@ assertButtonRoundTrip(hooks, "timezone large numbers option", {
   type: "timezone",
   precision: "",
   options: "large_numbers",
+}, false);
+
+assertButtonRoundTrip(hooks, "weather current conditions card", {
+  entity: "weather.forecast_home",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "weather",
+  precision: "",
 }, false);
 
 assertButtonRoundTrip(hooks, "weather tomorrow card", {

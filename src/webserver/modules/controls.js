@@ -1074,6 +1074,98 @@ function toggleRow(label, id, checked) {
   return { row: row, input: inp };
 }
 
+function cardMetadataValue(value, b, helpers) {
+  return typeof value === "function" ? value(b, helpers) : value;
+}
+
+function applyCardMetadataFields(b, helpers, fields) {
+  fields = fields || {};
+  for (var key in fields) {
+    var value = cardMetadataValue(fields[key], b, helpers);
+    b[key] = value;
+    helpers.saveField(key, value);
+  }
+}
+
+function renderCardModeSelector(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var mode = metadata.mode || {};
+  var field = helpers.selectField(
+    mode.label || "Type",
+    helpers.idPrefix + (mode.idSuffix || "mode"),
+    mode.options || [],
+    cardMetadataValue(mode.value, b, helpers) || "",
+    function () {
+      if (mode.onChange) mode.onChange.call(this, b, helpers);
+    }
+  );
+  panel.appendChild(field.field);
+  return field;
+}
+
+function renderCardLargeNumbersToggle(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var large = metadata.largeNumbers || {};
+  if (helpers.cardSize !== 4) return null;
+  if (large.isVisible && !large.isVisible(b, helpers)) return null;
+  var toggle = helpers.toggleRow(
+    large.label || "Large Numbers",
+    helpers.idPrefix + (large.idSuffix || "large-numbers"),
+    cardLargeNumbersEnabled(b)
+  );
+  panel.appendChild(toggle.row);
+  toggle.input.addEventListener("change", function () {
+    setSensorLargeNumbersEnabled(b, this.checked);
+    helpers.saveField("options", b.options);
+    if (large.onChange) large.onChange.call(this, b, helpers);
+  });
+  return toggle;
+}
+
+function syncCardLargeNumbersToggle(toggle, b, helpers, visible) {
+  if (!toggle) return;
+  toggle.row.style.display = visible ? "" : "none";
+  if (!visible && cardLargeNumbersEnabled(b)) {
+    setSensorLargeNumbersEnabled(b, false);
+    toggle.input.checked = false;
+    helpers.saveField("options", b.options);
+  }
+}
+
+function renderCardEntityField(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var entity = metadata.entity || {};
+  var bindName = entity.bindName || "entity";
+  var value = entity.value != null ? cardMetadataValue(entity.value, b, helpers) : b[bindName];
+  var field = helpers.entityField(
+    entity.label || "Entity",
+    helpers.idPrefix + (entity.idSuffix || "entity"),
+    value || "",
+    entity.placeholder || "",
+    entity.domains || [],
+    bindName,
+    entity.rerender !== false,
+    entity.requiredMessage || ""
+  );
+  panel.appendChild(field.field);
+  return field;
+}
+
+function cardSensorPreviewHtml(b, helpers, value, unit, extraClass, valueClass) {
+  var className = "sp-sensor-preview" + (extraClass ? " " + extraClass : "") +
+    (helpers.cardSize === 4 && cardLargeNumbersEnabled(b) ? " sp-sensor-preview-large" : "");
+  return '<span class="' + className + '">' +
+    '<span class="sp-sensor-value' + (valueClass ? " " + valueClass : "") + '">' + helpers.escHtml(value) + '</span>' +
+    (unit != null ? '<span class="sp-sensor-unit">' + helpers.escHtml(unit) + '</span>' : "") +
+  '</span>';
+}
+
+function cardBadgeLabelHtml(helpers, label, badgeIcon) {
+  return '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
+    helpers.escHtml(label) +
+  '</span><span class="sp-type-badge mdi mdi-' + badgeIcon + '"></span></span>';
+}
+
 function condField() {
   var el = document.createElement("div");
   el.className = "sp-cond-field";
@@ -2030,6 +2122,11 @@ function renderButtonSettings(forceOpen) {
     entityInput: entityInput,
     bindField: bindField,
     saveField: saveField,
+    applyCardMetadataFields: applyCardMetadataFields,
+    renderCardModeSelector: renderCardModeSelector,
+    renderCardLargeNumbersToggle: renderCardLargeNumbersToggle,
+    syncCardLargeNumbersToggle: syncCardLargeNumbersToggle,
+    renderCardEntityField: renderCardEntityField,
     requireField: requireField,
     clearFieldError: clearFieldError,
     toggleRow: toggleRow,

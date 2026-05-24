@@ -1,8 +1,54 @@
 // Read-only weather card: displays either current conditions or high / low temperatures.
+var WEATHER_CARD_METADATA = {
+  mode: {
+    label: "Type",
+    idSuffix: "weather-display",
+    options: [
+      ["", "Current Conditions"],
+      ["today", "Temperatures Today"],
+      ["tomorrow", "Temperatures Tomorrow"],
+    ],
+    value: function (b) {
+      return weatherCardIsForecastMode(b) ? b.precision : "";
+    },
+    onChange: function (b, helpers) {
+      b.precision = this.value;
+      helpers.saveField("precision", b.precision);
+    },
+  },
+  entity: {
+    label: "Weather Entity",
+    idSuffix: "entity",
+    placeholder: "e.g. weather.forecast_home",
+    domains: ["weather"],
+    bindName: "entity",
+    rerender: true,
+    requiredMessage: "Add an entity before saving.",
+  },
+  largeNumbers: {
+    label: "Large Temperature Numbers",
+    idSuffix: "large-weather-numbers",
+    supported: weatherCardIsForecastMode,
+  },
+  preview: {
+    forecastBadge: "weather-partly-cloudy",
+    currentBadge: "weather-cloudy",
+  },
+};
+
+function weatherCardDefaultForecastLabel(b) {
+  return b.precision === "today" ? "Today" : "Tomorrow";
+}
+
+function weatherCardIsForecastMode(b) {
+  return !!b && (b.precision === "today" || b.precision === "tomorrow");
+}
+
 registerButtonType("weather", {
   label: "Weather",
   allowInSubpage: true,
   hideLabel: true,
+  cardMetadata: WEATHER_CARD_METADATA,
   onSelect: function (b) {
     b.label = "";
     b.icon = "Auto";
@@ -13,92 +59,44 @@ registerButtonType("weather", {
     if (b.precision !== "today" && b.precision !== "tomorrow") b.precision = "";
   },
   renderSettings: function (panel, b, slot, helpers) {
-    var isLargeCard = helpers.cardSize === 4;
-
-    function defaultForecastLabel() {
-      return b.precision === "today" ? "Today" : "Tomorrow";
-    }
-
-    function isForecastMode() {
-      return b.precision === "today" || b.precision === "tomorrow";
-    }
-
-    var modeField = helpers.selectField("Type", helpers.idPrefix + "weather-display", [
-      ["", "Current Conditions"],
-      ["today", "Temperatures Today"],
-      ["tomorrow", "Temperatures Tomorrow"],
-    ], b.precision === "today" || b.precision === "tomorrow" ? b.precision : "");
+    var modeField = helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
     var modeSelect = modeField.select;
-    panel.appendChild(modeField.field);
 
-    var entityField = helpers.entityField(
-      "Weather Entity", helpers.idPrefix + "entity", b.entity,
-      "e.g. weather.forecast_home", ["weather"], "entity", true,
-      "Add an entity before saving.");
-    panel.appendChild(entityField.field);
+    helpers.renderCardEntityField(panel, b, helpers, WEATHER_CARD_METADATA);
 
     var labelControl = helpers.textField(
-      "Label", helpers.idPrefix + "label", b.label, "e.g. " + defaultForecastLabel(),
+      "Label", helpers.idPrefix + "label", b.label, "e.g. " + weatherCardDefaultForecastLabel(b),
       "label", true);
     var labelField = labelControl.field;
     var labelInp = labelControl.input;
     panel.appendChild(labelField);
 
-    var largeNumbersToggle = null;
-    if (isLargeCard) {
-      largeNumbersToggle = helpers.toggleRow(
-        "Large Temperature Numbers", helpers.idPrefix + "large-weather-numbers",
-        cardLargeNumbersEnabled(b));
-      panel.appendChild(largeNumbersToggle.row);
-      largeNumbersToggle.input.addEventListener("change", function () {
-        setSensorLargeNumbersEnabled(b, this.checked);
-        helpers.saveField("options", b.options);
-      });
-    }
+    var largeNumbersToggle = helpers.renderCardLargeNumbersToggle(panel, b, helpers, WEATHER_CARD_METADATA);
 
     function syncForecastFields() {
-      var forecast = isForecastMode();
+      var forecast = weatherCardIsForecastMode(b);
       labelField.style.display = forecast ? "" : "none";
-      labelInp.placeholder = "e.g. " + defaultForecastLabel();
-      if (largeNumbersToggle) {
-        largeNumbersToggle.row.style.display = forecast ? "" : "none";
-        if (!forecast && cardLargeNumbersEnabled(b)) {
-          setSensorLargeNumbersEnabled(b, false);
-          largeNumbersToggle.input.checked = false;
-          helpers.saveField("options", b.options);
-        }
-      }
+      labelInp.placeholder = "e.g. " + weatherCardDefaultForecastLabel(b);
+      helpers.syncCardLargeNumbersToggle(largeNumbersToggle, b, helpers, forecast);
     }
 
     modeSelect.addEventListener("change", function () {
-      b.precision = this.value;
-      helpers.saveField("precision", b.precision);
       syncForecastFields();
     });
     syncForecastFields();
   },
   renderPreview: function (b, helpers) {
-    if (b.precision === "today" || b.precision === "tomorrow") {
-      var defaultLabel = b.precision === "today" ? "Today" : "Tomorrow";
+    if (weatherCardIsForecastMode(b)) {
+      var defaultLabel = weatherCardDefaultForecastLabel(b);
       var label = b.label || defaultLabel;
-      var previewClass = "sp-sensor-preview sp-forecast-preview" +
-        (helpers.cardSize === 4 && cardLargeNumbersEnabled(b) ? " sp-sensor-preview-large" : "");
       return {
-        iconHtml:
-          '<span class="' + previewClass + '">' +
-            '<span class="sp-sensor-value sp-forecast-value">18/10</span>' +
-            '<span class="sp-sensor-unit">' + temperatureUnitSymbol() + '</span>' +
-          '</span>',
-        labelHtml:
-          '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
-          '<span class="sp-type-badge mdi mdi-weather-partly-cloudy"></span></span>',
+        iconHtml: cardSensorPreviewHtml(b, helpers, "18/10", temperatureUnitSymbol(), "sp-forecast-preview", "sp-forecast-value"),
+        labelHtml: cardBadgeLabelHtml(helpers, label, WEATHER_CARD_METADATA.preview.forecastBadge),
       };
     }
     return {
       iconHtml: '<span class="sp-btn-icon mdi mdi-weather-cloudy"></span>',
-      labelHtml:
-        '<span class="sp-btn-label-row"><span class="sp-btn-label">Cloudy</span>' +
-        '<span class="sp-type-badge mdi mdi-weather-cloudy"></span></span>',
+      labelHtml: cardBadgeLabelHtml(helpers, "Cloudy", WEATHER_CARD_METADATA.preview.currentBadge),
     };
   },
 });

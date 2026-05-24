@@ -245,6 +245,13 @@ function setConfigOptionValue(options, name, value) {
 
 function cardLargeNumbersSupported(b) {
   if (!b) return false;
+  if (typeof BUTTON_TYPES !== "undefined") {
+    var typeDef = BUTTON_TYPES[b.type || ""];
+    var large = typeDef && typeDef.cardMetadata && typeDef.cardMetadata.largeNumbers;
+    if (large) {
+      return typeof large.supported === "function" ? !!large.supported(b) : large.supported !== false;
+    }
+  }
   return (b.type === "sensor" && b.precision !== "text") ||
     (b.type === "weather" && (b.precision === "today" || b.precision === "tomorrow")) ||
     b.type === "calendar" ||

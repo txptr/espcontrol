@@ -186,6 +186,76 @@ assert(climateIconPreview.iconHtml.includes("mdi-thermostat"), "climate icon mod
 assert.strictEqual(climateIconPreview.buttonClass, undefined, "climate icon mode uses a standard card wrapper");
 assert(!climateIconPreview.iconHtml.includes("sp-climate-card-icon"), "climate icon mode uses standard card icon layout");
 assert(!climateIconPreview.iconHtml.includes("\u00b0C"), "climate icon mode preview does not show a large temperature");
+
+function previewSensorValue(preview) {
+  return (preview.iconHtml.match(/sp-sensor-value[^>]*>([^<]*)/) || [])[1] || "";
+}
+
+const datePreview = hooks.buttonTypePreviewFor("calendar", {
+  type: "calendar",
+  precision: "",
+  options: "",
+});
+assert(datePreview.labelHtml.includes("mdi-calendar-month"), "date preview uses the calendar badge");
+assert(datePreview.iconHtml.includes("sp-sensor-preview"), "date preview uses the shared sensor preview");
+
+const dateTimePreview = hooks.buttonTypePreviewFor("calendar", {
+  type: "calendar",
+  precision: "datetime",
+  options: "large_numbers",
+}, {
+  cardSize: 4,
+  clockFormat: "24h",
+});
+assert(dateTimePreview.iconHtml.includes("sp-sensor-preview-large"), "date/time preview supports large numbers");
+assert(previewSensorValue(dateTimePreview).includes(":"), "date/time preview renders a time value");
+
+const timezonePreview = hooks.buttonTypePreviewFor("timezone", {
+  entity: "America/New_York (GMT-5)",
+  type: "timezone",
+  options: "",
+}, {
+  clockFormat: "24h",
+});
+assert(timezonePreview.labelHtml.includes("New York"), "world clock preview uses the city label");
+assert(timezonePreview.labelHtml.includes("mdi-map-clock"), "world clock preview uses the map clock badge");
+
+const timezoneSamples = [
+  "UTC (GMT+0)",
+  "Pacific/Kiritimati (GMT+14)",
+  "America/New_York (GMT-5)",
+  "Pacific/Honolulu (GMT-10)",
+];
+assert(timezoneSamples.some((timezone) => {
+  const button = { entity: timezone, type: "timezone", options: "" };
+  const clock24 = previewSensorValue(hooks.buttonTypePreviewFor("timezone", button, { clockFormat: "24h" }));
+  const clock12 = previewSensorValue(hooks.buttonTypePreviewFor("timezone", button, { clockFormat: "12h" }));
+  return clock24 !== clock12;
+}), "world clock preview follows 12/24-hour formatting");
+
+const weatherCurrentPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "",
+});
+assert(weatherCurrentPreview.iconHtml.includes("mdi-weather-cloudy"), "weather current preview uses the current-condition icon");
+assert(weatherCurrentPreview.labelHtml.includes("mdi-weather-cloudy"), "weather current preview uses the weather badge");
+
+const weatherForecastPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  label: "Garden",
+  type: "weather",
+  precision: "today",
+  options: "large_numbers",
+}, {
+  cardSize: 4,
+  temperatureUnit: "\u00b0F",
+});
+assert(weatherForecastPreview.iconHtml.includes("sp-forecast-value"), "weather forecast preview uses forecast value styling");
+assert(weatherForecastPreview.iconHtml.includes("sp-sensor-preview-large"), "weather forecast preview supports large numbers");
+assert(weatherForecastPreview.iconHtml.includes("\u00b0F"), "weather forecast preview uses the selected temperature unit");
+assert(weatherForecastPreview.labelHtml.includes("Garden"), "weather forecast preview uses the custom label");
+
 assert.strictEqual(hooks.normalizeScreensaverAction("Screen Dimmed"), "dim");
 assert.strictEqual(hooks.previewHtmlValue({ labelHtml: "" }, "labelHtml", "fallback"), "");
 assert.strictEqual(hooks.previewHtmlValue({}, "labelHtml", "fallback"), "fallback");

@@ -261,6 +261,7 @@
       renderPreview: null,
       contextMenuItems: null,
       experimental: null,
+      cardMetadata: null,
     }, def);
   }
   function developerExperimentalUrlFlag() {
