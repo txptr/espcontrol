@@ -87,20 +87,50 @@ function setAlarmCardType(b, value, helpers) {
   renderButtonSettings();
 }
 
+var ALARM_CARD_METADATA = {
+  mode: {
+    label: "Type",
+    idSuffix: "alarm-card-type",
+    options: alarmCardTypeOptionsForSettings,
+    value: function (b) {
+      return b.type === "alarm"
+        ? ALARM_CONTROL_PANEL_VALUE
+        : (alarmActionInfo(b.sensor) || ALARM_ACTIONS[0]).value;
+    },
+  },
+  entity: {
+    label: "Alarm Entity",
+    placeholder: "e.g. alarm_control_panel.house",
+    domains: ["alarm_control_panel"],
+    bindName: "entity",
+    rerender: true,
+    requiredMessage: "Add an alarm_control_panel entity before saving.",
+  },
+  labelDisplay: {
+    label: "Label Display",
+    options: [
+      ["name", "Name"],
+      ["status", "Status"],
+    ],
+  },
+  iconDisplay: {
+    label: "Icon Display",
+    options: [
+      ["static", "Static"],
+      ["status", "Status"],
+    ],
+  },
+};
+
 function renderAlarmCardTypeField(panel, b, helpers) {
-  var options = alarmCardTypeOptionsForSettings(helpers.isSub);
-  var value = b.type === "alarm"
-    ? ALARM_CONTROL_PANEL_VALUE
-    : (alarmActionInfo(b.sensor) || ALARM_ACTIONS[0]).value;
-  panel.appendChild(helpers.selectField(
-    "Type",
-    helpers.idPrefix + "alarm-card-type",
-    options,
-    value,
-    function () {
-      setAlarmCardType(b, this.value, helpers);
-    }
-  ).field);
+  helpers.renderCardModeSelector(panel, b, helpers, Object.assign({}, ALARM_CARD_METADATA, {
+    mode: Object.assign({}, ALARM_CARD_METADATA.mode, {
+      options: alarmCardTypeOptionsForSettings(helpers.isSub),
+      onChange: function () {
+        setAlarmCardType(b, this.value, helpers);
+      },
+    }),
+  }));
 }
 
 registerButtonType("alarm", {
@@ -108,6 +138,7 @@ registerButtonType("alarm", {
   allowInSubpage: true,
   hideLabel: true,
   labelPlaceholder: "e.g. House Alarm",
+  cardMetadata: ALARM_CARD_METADATA,
   onSelect: function (b) {
     b.entity = "";
     b.label = "";
@@ -133,68 +164,65 @@ registerButtonType("alarm", {
       helpers.saveField("options", normalizedOptions);
     }
 
-    var entityField = helpers.entityField(
-      "Alarm Entity",
-      helpers.idPrefix + "alarm-entity",
-      b.entity,
-      "e.g. alarm_control_panel.house",
-      ["alarm_control_panel"],
-      "entity",
-      true,
-      "Add an alarm_control_panel entity before saving."
-    );
-    panel.appendChild(entityField.field);
+    helpers.renderCardEntityField(panel, b, helpers, {
+      entity: Object.assign({}, ALARM_CARD_METADATA.entity, {
+        idSuffix: "alarm-entity",
+      }),
+    });
 
-    function setActive(buttons, value) {
-      for (var key in buttons) buttons[key].classList.toggle("active", key === value);
-    }
-
-    var labelControl = helpers.textField(
-      "Label", helpers.idPrefix + "alarm-label", b.label, "e.g. House Alarm", "label", true);
+    var labelControl = helpers.renderCardTextField(condField(), b, helpers, {
+      label: "Label",
+      idSuffix: "alarm-label",
+      field: "label",
+      placeholder: "e.g. House Alarm",
+      rerender: true,
+    });
+    var labelField = labelControl.field.parentNode || labelControl.field;
 
     function setLabelVisible(value) {
-      labelControl.field.style.display = value === "name" ? "" : "none";
+      labelField.style.display = value === "name" ? "" : "none";
     }
 
-    var labelDisplayField = helpers.segmentControl([
-      ["name", "Name"],
-      ["status", "Status"],
-    ], alarmLabelDisplayMode(b), function (value) {
-      setActive(labelDisplayField.buttons, value);
-      setAlarmLabelDisplayMode(b, value);
-      helpers.saveField("options", b.options);
-      setLabelVisible(value);
-      scheduleRender();
+    var labelDisplayField = helpers.renderCardSegmentControl(panel, b, helpers, {
+      segment: Object.assign({}, ALARM_CARD_METADATA.labelDisplay, {
+        value: function () { return alarmLabelDisplayMode(b); },
+        onSelect: function (button, cardHelpers, value) {
+          setAlarmLabelDisplayMode(button, value);
+          cardHelpers.saveField("options", button.options);
+          setLabelVisible(value);
+          scheduleRender();
+        },
+      }),
     });
-    panel.appendChild(helpers.fieldWithControl("Label Display", null, labelDisplayField.segment));
     setLabelVisible(alarmLabelDisplayMode(b));
-    panel.appendChild(labelControl.field);
+    panel.appendChild(labelField);
 
-    var iconControl = helpers.iconPickerField(
-      helpers.idPrefix + "alarm-icon-picker", helpers.idPrefix + "alarm-icon",
-      b.icon || "Security", function (opt) {
-        b.icon = opt || "Security";
-        helpers.saveField("icon", b.icon);
-      }, "Icon"
-    );
+    var iconControl = helpers.renderCardIconPicker(condField(), b, helpers, {
+      pickerIdSuffix: "alarm-icon-picker",
+      idSuffix: "alarm-icon",
+      field: "icon",
+      fallback: "Security",
+      label: "Icon",
+    });
+    var iconField = iconControl.parentNode || iconControl;
 
     function setIconVisible(value) {
-      iconControl.style.display = value === "static" ? "" : "none";
+      iconField.style.display = value === "static" ? "" : "none";
     }
 
-    var iconDisplayField = helpers.segmentControl([
-      ["static", "Static"],
-      ["status", "Status"],
-    ], alarmIconDisplayMode(b), function (value) {
-      setActive(iconDisplayField.buttons, value);
-      setAlarmIconDisplayMode(b, value);
-      helpers.saveField("options", b.options);
-      setIconVisible(value);
-      scheduleRender();
+    var iconDisplayField = helpers.renderCardSegmentControl(panel, b, helpers, {
+      segment: Object.assign({}, ALARM_CARD_METADATA.iconDisplay, {
+        value: function () { return alarmIconDisplayMode(b); },
+        onSelect: function (button, cardHelpers, value) {
+          setAlarmIconDisplayMode(button, value);
+          cardHelpers.saveField("options", button.options);
+          setIconVisible(value);
+          scheduleRender();
+        },
+      }),
     });
-    panel.appendChild(helpers.fieldWithControl("Icon Display", null, iconDisplayField.segment));
     setIconVisible(alarmIconDisplayMode(b));
-    panel.appendChild(iconControl);
+    panel.appendChild(iconField);
 
     function savePinOptions() {
       setAlarmPinRequired(b, "arm", armPinToggle.input.checked);
@@ -202,20 +230,18 @@ registerButtonType("alarm", {
       helpers.saveField("options", b.options);
     }
 
-    var armPinToggle = helpers.toggleRow(
-      "PIN required for arming",
-      helpers.idPrefix + "alarm-pin-arm",
-      alarmPinRequired(b, "arm")
-    );
-    var disarmPinToggle = helpers.toggleRow(
-      "PIN required for disarming",
-      helpers.idPrefix + "alarm-pin-disarm",
-      alarmPinRequired(b, "disarm")
-    );
-    panel.appendChild(armPinToggle.row);
-    panel.appendChild(disarmPinToggle.row);
-    armPinToggle.input.addEventListener("change", savePinOptions);
-    disarmPinToggle.input.addEventListener("change", savePinOptions);
+    var armPinToggle = helpers.renderCardOptionToggle(panel, b, helpers, {
+      label: "PIN required for arming",
+      idSuffix: "alarm-pin-arm",
+      checked: function () { return alarmPinRequired(b, "arm"); },
+      onChange: savePinOptions,
+    });
+    var disarmPinToggle = helpers.renderCardOptionToggle(panel, b, helpers, {
+      label: "PIN required for disarming",
+      idSuffix: "alarm-pin-disarm",
+      checked: function () { return alarmPinRequired(b, "disarm"); },
+      onChange: savePinOptions,
+    });
   },
   renderPreview: function (b, helpers) {
     var label = (b.label && b.label.trim()) || (b.entity && b.entity.trim()) || "Alarm";
@@ -234,6 +260,7 @@ registerButtonType("alarm_action", {
   allowInSubpage: true,
   labelPlaceholder: "e.g. Arm Away",
   pickerKey: "alarm",
+  cardMetadata: ALARM_CARD_METADATA,
   isAvailable: function () { return false; },
   onSelect: function (b) {
     var info = ALARM_ACTIONS[0];
@@ -257,36 +284,29 @@ registerButtonType("alarm_action", {
     b.icon_on = "Auto";
     b.options = normalizeAlarmOptions(b.options);
 
-    var entityField = helpers.entityField(
-      "Alarm Entity",
-      helpers.idPrefix + "alarm-action-entity",
-      b.entity,
-      "e.g. alarm_control_panel.house",
-      ["alarm_control_panel"],
-      "entity",
-      true,
-      "Add an alarm_control_panel entity before saving."
-    );
-    panel.appendChild(entityField.field);
+    helpers.renderCardEntityField(panel, b, helpers, {
+      entity: Object.assign({}, ALARM_CARD_METADATA.entity, {
+        idSuffix: "alarm-action-entity",
+      }),
+    });
 
-    panel.appendChild(helpers.iconPickerField(
-      helpers.idPrefix + "alarm-action-icon-picker", helpers.idPrefix + "alarm-action-icon",
-      b.icon || alarmActionInfo(b.sensor).icon, function (opt) {
-        b.icon = opt || alarmActionInfo(b.sensor).icon;
-        helpers.saveField("icon", b.icon);
-      }, "Icon"
-    ));
+    helpers.renderCardIconPicker(panel, b, helpers, {
+      pickerIdSuffix: "alarm-action-icon-picker",
+      idSuffix: "alarm-action-icon",
+      field: "icon",
+      fallback: function () { return alarmActionInfo(b.sensor).icon; },
+      label: "Icon",
+    });
 
     var pinMode = b.sensor === "disarm" ? "disarm" : "arm";
-    var pinToggle = helpers.toggleRow(
-      "PIN required",
-      helpers.idPrefix + "alarm-action-pin",
-      alarmPinRequired(b, pinMode)
-    );
-    panel.appendChild(pinToggle.row);
-    pinToggle.input.addEventListener("change", function () {
-      setAlarmPinRequired(b, pinMode, this.checked);
-      helpers.saveField("options", b.options);
+    helpers.renderCardOptionToggle(panel, b, helpers, {
+      label: "PIN required",
+      idSuffix: "alarm-action-pin",
+      checked: function () { return alarmPinRequired(b, pinMode); },
+      onChange: function (button, cardHelpers, checked) {
+        setAlarmPinRequired(button, pinMode, checked);
+        cardHelpers.saveField("options", button.options);
+      },
     });
   },
   renderPreview: function (b, helpers) {

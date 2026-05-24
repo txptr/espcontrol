@@ -282,6 +282,120 @@ assert(weatherForecastPreview.iconHtml.includes("sp-sensor-preview-large"), "wea
 assert(weatherForecastPreview.iconHtml.includes("\u00b0F"), "weather forecast preview uses the selected temperature unit");
 assert(weatherForecastPreview.labelHtml.includes("Garden"), "weather forecast preview uses the custom label");
 
+const sensorNumericPreview = hooks.buttonTypePreviewFor("sensor", {
+  sensor: "sensor.office_temperature",
+  label: "Office",
+  unit: "\u00b0C",
+  type: "sensor",
+  precision: "1",
+  options: "large_numbers",
+}, { cardSize: 4 });
+assert(sensorNumericPreview.iconHtml.includes("sp-sensor-preview-large"), "sensor numeric preview supports large numbers");
+assert(sensorNumericPreview.labelHtml.includes("mdi-gauge"), "sensor numeric preview uses the gauge badge");
+assert(sensorNumericPreview.iconHtml.includes("\u00b0C"), "sensor numeric preview includes the unit");
+
+const sensorTextPreview = hooks.buttonTypePreviewFor("sensor", {
+  sensor: "sensor.washer_state",
+  icon: "Washing Machine",
+  type: "sensor",
+  precision: "text",
+});
+assert(sensorTextPreview.iconHtml.includes("mdi-washing-machine"), "sensor text preview uses the selected icon");
+assert(sensorTextPreview.labelHtml.includes("mdi-format-text"), "sensor text preview uses the text badge");
+
+const legacyForecastPreview = hooks.buttonTypePreviewFor("weather_forecast", {
+  entity: "weather.forecast_home",
+  type: "weather_forecast",
+  precision: "tomorrow",
+}, { temperatureUnit: "\u00b0C" });
+assert(legacyForecastPreview.iconHtml.includes("sp-forecast-value"), "legacy forecast preview uses forecast styling");
+assert(legacyForecastPreview.labelHtml.includes("Temperatures Tomorrow"), "legacy forecast preview keeps its label");
+
+const doorPreview = hooks.buttonTypePreviewFor("door_window", {
+  label: "Patio Door",
+  icon: "Door",
+  icon_on: "Door Open",
+  sensor: "binary_sensor.patio_door",
+  type: "door_window",
+  precision: "door",
+});
+assert(doorPreview.iconHtml.includes("mdi-door"), "door/window door preview uses the closed door icon");
+assert(doorPreview.labelHtml.includes("mdi-door"), "door/window door preview uses the door badge");
+
+const windowPreview = hooks.buttonTypePreviewFor("door_window", {
+  label: "Kitchen Window",
+  icon: "Window Closed",
+  icon_on: "Window Open",
+  sensor: "binary_sensor.kitchen_window",
+  type: "door_window",
+  precision: "window",
+});
+assert(windowPreview.labelHtml.includes("mdi-window-closed"), "door/window window preview uses the window badge");
+
+const actionPreview = hooks.buttonTypePreviewFor("action", {
+  entity: "scene.movie_mode",
+  label: "Movie Mode",
+  icon: "Flash",
+  sensor: "scene.turn_on",
+  type: "action",
+});
+assert(actionPreview.iconHtml.includes("mdi-flash"), "action preview uses the selected action icon");
+assert(actionPreview.labelHtml.includes("mdi-flash"), "action preview uses the action badge");
+
+const actionOptionPreview = hooks.buttonTypePreviewFor("action", {
+  entity: "select.wled_preset",
+  label: "Preset",
+  sensor: "input_select.select_option",
+  type: "action",
+});
+assert(actionOptionPreview.iconHtml.includes("Option"), "action option-select preview uses option text");
+assert(actionOptionPreview.labelHtml.includes("mdi-chevron-down"), "action option-select preview uses the dropdown badge");
+
+const alarmActionPreview = hooks.buttonTypePreviewFor("alarm_action", {
+  entity: "alarm_control_panel.house",
+  label: "Arm Away",
+  icon: "Shield Lock",
+  sensor: "away",
+  type: "alarm_action",
+});
+assert(alarmActionPreview.iconHtml.includes("mdi-shield-lock"), "alarm action preview uses its action icon");
+
+const fanSpeedPreview = hooks.buttonTypePreviewFor("fan_speed", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan Speed 2",
+  type: "fan_speed",
+});
+assert(fanSpeedPreview.iconHtml.includes("sp-slider-preview"), "fan speed preview keeps the slider preview");
+assert(fanSpeedPreview.labelHtml.includes("mdi-fan-speed-2"), "fan speed preview uses the speed badge");
+
+const fanSwitchPreview = hooks.buttonTypePreviewFor("fan_switch", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan Off",
+  icon_on: "Fan",
+  type: "fan_switch",
+});
+assert(fanSwitchPreview.labelHtml.includes("mdi-fan"), "fan switch preview uses the fan badge");
+
+const mediaVolumePreview = hooks.buttonTypePreviewFor("media", {
+  entity: "media_player.kitchen",
+  label: "Kitchen",
+  sensor: "volume",
+  type: "media",
+});
+assert(mediaVolumePreview.iconHtml.includes("sp-sensor-preview"), "media volume preview uses the shared number preview");
+assert(mediaVolumePreview.labelHtml.includes("mdi-speaker"), "media volume preview uses the speaker badge");
+
+const mediaNowPlayingPreview = hooks.buttonTypePreviewFor("media", {
+  entity: "media_player.office",
+  sensor: "now_playing",
+  type: "media",
+  precision: "progress",
+});
+assert(mediaNowPlayingPreview.iconHtml.includes("Midnight City"), "media now-playing preview keeps title text");
+assert(mediaNowPlayingPreview.labelHtml.includes("sp-media-now-artist"), "media now-playing preview keeps artist styling");
+
 assert.strictEqual(hooks.normalizeScreensaverAction("Screen Dimmed"), "dim");
 assert.strictEqual(hooks.previewHtmlValue({ labelHtml: "" }, "labelHtml", "fallback"), "");
 assert.strictEqual(hooks.previewHtmlValue({}, "labelHtml", "fallback"), "fallback");

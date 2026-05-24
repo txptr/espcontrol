@@ -1,8 +1,14 @@
 // Legacy read-only forecast card: displays tomorrow's high / low temperature.
+var WEATHER_FORECAST_CARD_METADATA = {
+  entity: WEATHER_CARD_METADATA.entity,
+  preview: WEATHER_CARD_METADATA.preview,
+};
+
 registerButtonType("weather_forecast", {
   label: "Weather Forecast",
   allowInSubpage: true,
   hideLabel: true,
+  cardMetadata: WEATHER_FORECAST_CARD_METADATA,
   isAvailable: function () {
     return false;
   },
@@ -15,22 +21,12 @@ registerButtonType("weather_forecast", {
     b.precision = "tomorrow";
   },
   renderSettings: function (panel, b, slot, helpers) {
-    var entityField = helpers.entityField(
-      "Weather Entity", helpers.idPrefix + "entity", b.entity,
-      "e.g. weather.forecast_home", ["weather"], "entity", true,
-      "Add an entity before saving.");
-    panel.appendChild(entityField.field);
+    helpers.renderCardEntityField(panel, b, helpers, WEATHER_FORECAST_CARD_METADATA);
   },
   renderPreview: function (b, helpers) {
     return {
-      iconHtml:
-        '<span class="sp-sensor-preview sp-forecast-preview">' +
-          '<span class="sp-sensor-value sp-forecast-value">18/10</span>' +
-          '<span class="sp-sensor-unit">' + temperatureUnitSymbol() + '</span>' +
-        '</span>',
-      labelHtml:
-        '<span class="sp-btn-label-row"><span class="sp-btn-label">Temperatures Tomorrow</span>' +
-        '<span class="sp-type-badge mdi mdi-weather-partly-cloudy"></span></span>',
+      iconHtml: cardSensorPreviewHtml(b, helpers, "18/10", temperatureUnitSymbol(), "sp-forecast-preview", "sp-forecast-value"),
+      labelHtml: cardBadgeLabelHtml(helpers, "Temperatures Tomorrow", WEATHER_FORECAST_CARD_METADATA.preview.forecastBadge),
     };
   },
 });

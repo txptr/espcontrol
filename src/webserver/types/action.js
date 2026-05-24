@@ -92,10 +92,39 @@ function actionCardNeedsExtraValue(value) {
   return value === "input_number.set_value";
 }
 
+var ACTION_CARD_METADATA = {
+  mode: {
+    label: "Action",
+    idSuffix: "action",
+    options: ACTION_CARD_ACTIONS,
+    value: function (b) {
+      return b.sensor || "scene.turn_on";
+    },
+  },
+  entity: {
+    idSuffix: "entity",
+    bindName: "entity",
+    rerender: true,
+    requiredMessage: "Add an entity before saving.",
+  },
+  stateMode: {
+    label: "Type",
+    options: [
+      ["numeric", "Numeric"],
+      ["text", "Text"],
+    ],
+  },
+  preview: {
+    optionBadge: "chevron-down",
+    actionBadge: "flash",
+  },
+};
+
 registerButtonType("action", {
   label: "Action",
   allowInSubpage: true,
   labelPlaceholder: "e.g. Movie Mode",
+  cardMetadata: ACTION_CARD_METADATA,
   onSelect: function (b) {
     b.entity = "";
     b.sensor = "scene.turn_on";
@@ -108,45 +137,43 @@ registerButtonType("action", {
   renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
     normalizeActionCardConfig(b);
 
-    var actionField = helpers.selectField("Action", helpers.idPrefix + "action", ACTION_CARD_ACTIONS, b.sensor);
+    var actionField = helpers.renderCardModeSelector(panel, b, helpers, Object.assign({}, ACTION_CARD_METADATA, {
+      mode: Object.assign({}, ACTION_CARD_METADATA.mode, {
+        onChange: function () {
+          b.sensor = this.value;
+          helpers.saveField("sensor", b.sensor);
+          if (!actionCardNeedsExtraValue(b.sensor)) {
+            b.unit = "";
+            helpers.saveField("unit", "");
+          }
+          if (actionCardIsOptionSelect(b)) {
+            b.options = "";
+            helpers.saveField("options", "");
+          }
+          b.icon_on = "Auto";
+          b.precision = "";
+          helpers.saveField("icon_on", "Auto");
+          helpers.saveField("precision", "");
+          renderButtonSettings();
+        },
+      }),
+    }));
     var actionSelect = actionField.select;
-    panel.appendChild(actionField.field);
-
-    actionSelect.addEventListener("change", function () {
-      b.sensor = this.value;
-      helpers.saveField("sensor", b.sensor);
-      if (!actionCardNeedsExtraValue(b.sensor)) {
-        b.unit = "";
-        helpers.saveField("unit", "");
-      }
-      if (actionCardIsOptionSelect(b)) {
-        b.options = "";
-        helpers.saveField("options", "");
-      }
-      b.icon_on = "Auto";
-      b.precision = "";
-      helpers.saveField("icon_on", "Auto");
-      helpers.saveField("precision", "");
-      renderButtonSettings();
-    });
+    actionSelect.value = b.sensor;
   },
   renderSettings: function (panel, b, slot, helpers) {
     normalizeActionCardConfig(b);
 
     var info = actionCardInfo(b.sensor) || ACTION_CARD_ACTIONS[0];
     var isOptionSelect = actionCardIsOptionSelect(b);
-    var entityField = helpers.entityField(
-      isOptionSelect ? "Select Entity" : "Action Entity",
-      helpers.idPrefix + "entity",
-      b.entity,
-      info.placeholder,
-      info.domains,
-      "entity",
-      true,
-      "Add an entity before saving."
-    );
+    var entityField = helpers.renderCardEntityField(panel, b, helpers, {
+      entity: Object.assign({}, ACTION_CARD_METADATA.entity, {
+        label: isOptionSelect ? "Select Entity" : "Action Entity",
+        placeholder: info.placeholder,
+        domains: info.domains,
+      }),
+    });
     var entityInp = entityField.input;
-    panel.appendChild(entityField.field);
 
     if (actionCardNeedsExtraValue(b.sensor)) {
       var valueInput = helpers.textInput(
@@ -164,13 +191,12 @@ registerButtonType("action", {
     }
 
     if (!isOptionSelect) {
-      panel.appendChild(helpers.iconPickerField(
-        helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
-        b.icon || "Flash", function (opt) {
-          b.icon = opt;
-          helpers.saveField("icon", opt);
-        }
-      ));
+      helpers.renderCardIconPicker(panel, b, helpers, {
+        pickerIdSuffix: "icon-picker",
+        idSuffix: "icon",
+        field: "icon",
+        fallback: "Flash",
+      });
     }
 
     entityInp._entityDomains = info.domains || [];
@@ -182,23 +208,29 @@ registerButtonType("action", {
     var stateUnit = actionCardStateUnit(b);
     var statePrecision = actionCardStatePrecision(b);
 
-    var mode = helpers.segmentControl([
-      ["numeric", "Numeric"],
-      ["text", "Text"],
-    ], stateMode, function (value) { setStateMode(value, true); });
+    var mode = helpers.renderCardSegmentControl(panel, b, helpers, {
+      segment: Object.assign({}, ACTION_CARD_METADATA.stateMode, {
+        value: function () { return stateMode; },
+        onSelect: function (button, cardHelpers, value) {
+          setStateMode(value, true);
+        },
+      }),
+    });
     var numericBtn = mode.buttons.numeric;
     var textBtn = mode.buttons.text;
-    panel.appendChild(helpers.fieldWithControl("Type", null, mode.segment));
 
-    var stateEntityField = helpers.entityField(
-      "Sensor Entity",
-      helpers.idPrefix + "action-state-entity",
-      stateEntity,
-      "e.g. sensor.printer_percent_complete",
-      ["sensor", "binary_sensor", "text_sensor"]
-    );
+    var stateEntityField = helpers.renderCardEntityField(panel, b, helpers, {
+      entity: {
+        label: "Sensor Entity",
+        idSuffix: "action-state-entity",
+        value: function () { return stateEntity; },
+        placeholder: "e.g. sensor.printer_percent_complete",
+        domains: ["sensor", "binary_sensor", "text_sensor"],
+        bindName: null,
+        rerender: false,
+      },
+    });
     var stateEntityInp = stateEntityField.input;
-    panel.appendChild(stateEntityField.field);
 
     var numericSection = condField();
     var stateUnitField = helpers.textField(
@@ -266,13 +298,8 @@ registerButtonType("action", {
     var label = b.label || b.entity || "Action";
     if (actionCardIsOptionSelect(b)) {
       return {
-        iconHtml:
-          '<span class="sp-sensor-preview">' +
-            '<span class="sp-sensor-value">Option</span>' +
-          '</span>',
-        labelHtml:
-          '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
-          '<span class="sp-type-badge mdi mdi-chevron-down"></span></span>',
+        iconHtml: cardSensorPreviewHtml(b, helpers, "Option", null),
+        labelHtml: cardBadgeLabelHtml(helpers, label, ACTION_CARD_METADATA.preview.optionBadge),
       };
     }
     var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "flash";
@@ -283,9 +310,7 @@ registerButtonType("action", {
       : "";
     return {
       iconHtml: stateBadge + '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
-      labelHtml:
-        '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
-        '<span class="sp-type-badge mdi mdi-flash"></span></span>',
+      labelHtml: cardBadgeLabelHtml(helpers, label, ACTION_CARD_METADATA.preview.actionBadge),
     };
   },
 });

@@ -1,8 +1,44 @@
 // Read-only door/window card: shows a binary sensor with subtype-specific icons.
+var DOOR_WINDOW_CARD_METADATA = {
+  mode: {
+    label: "Type",
+    idSuffix: "door-window-type",
+    options: [
+      ["door", "Door"],
+      ["window", "Window"],
+    ],
+    value: function (b) {
+      return normalizeDoorWindowSubtype(b.precision);
+    },
+  },
+  entity: {
+    label: "Sensor Entity",
+    idSuffix: "sensor",
+    placeholder: "e.g. binary_sensor.patio_door",
+    domains: ["binary_sensor", "sensor"],
+    bindName: "sensor",
+    rerender: true,
+    requiredMessage: "Add a door or window sensor before saving.",
+  },
+  labelField: {
+    label: "Label",
+    idSuffix: "label",
+    field: "label",
+    placeholder: "e.g. Patio Door",
+    rerender: true,
+  },
+  activeColor: {
+    label: "Lit When Open",
+    idSuffix: "door-window-active-color",
+    checked: doorWindowActiveColorEnabled,
+  },
+};
+
 registerButtonType("door_window", {
   label: "Doors & Windows",
   allowInSubpage: true,
   hideLabel: true,
+  cardMetadata: DOOR_WINDOW_CARD_METADATA,
   onSelect: function (b) {
     b.entity = "";
     b.sensor = "";
@@ -20,55 +56,41 @@ registerButtonType("door_window", {
     if (!b.icon || b.icon === "Auto") b.icon = doorWindowClosedIcon(b.precision);
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = doorWindowOpenIcon(b.precision);
 
-    var subtypeField = helpers.selectField("Type", helpers.idPrefix + "door-window-type", [
-      ["door", "Door"],
-      ["window", "Window"],
-    ], b.precision);
+    var subtypeField = helpers.renderCardModeSelector(panel, b, helpers, Object.assign({}, DOOR_WINDOW_CARD_METADATA, {
+      mode: Object.assign({}, DOOR_WINDOW_CARD_METADATA.mode, {
+        onChange: function () {
+          setSubtype(this.value, true);
+        },
+      }),
+    }));
     var subtypeSelect = subtypeField.select;
-    panel.appendChild(subtypeField.field);
-    subtypeSelect.addEventListener("change", function () {
-      setSubtype(this.value, true);
+
+    helpers.renderCardEntityField(panel, b, helpers, DOOR_WINDOW_CARD_METADATA);
+
+    helpers.renderCardTextField(panel, b, helpers, DOOR_WINDOW_CARD_METADATA.labelField);
+
+    var closedIconPicker = helpers.renderCardIconPicker(panel, b, helpers, {
+      pickerIdSuffix: "closed-icon-picker",
+      idSuffix: "icon",
+      field: "icon",
+      label: "Closed Icon",
+      fallback: function () { return doorWindowClosedIcon(b.precision); },
     });
 
-    var sensorField = helpers.entityField(
-      "Sensor Entity", helpers.idPrefix + "sensor", b.sensor,
-      "e.g. binary_sensor.patio_door",
-      ["binary_sensor", "sensor"], "sensor", true,
-      "Add a door or window sensor before saving.");
-    panel.appendChild(sensorField.field);
-
-    panel.appendChild(helpers.textField(
-      "Label", helpers.idPrefix + "label", b.label, "e.g. Patio Door", "label", true).field);
-
-    var closedIconPicker = helpers.iconPickerField(
-      helpers.idPrefix + "closed-icon-picker", helpers.idPrefix + "icon",
-      b.icon || doorWindowClosedIcon(b.precision), function (opt) {
-        b.icon = opt;
-        helpers.saveField("icon", opt);
-      }, "Closed Icon"
-    );
-    panel.appendChild(closedIconPicker);
-
-    var openIconPicker = helpers.iconPickerField(
-      helpers.idPrefix + "open-icon-picker", helpers.idPrefix + "icon-on",
-      b.icon_on || doorWindowOpenIcon(b.precision), function (opt) {
-        b.icon_on = opt;
-        helpers.saveField("icon_on", opt);
-      }, "Open Icon"
-    );
-    panel.appendChild(openIconPicker);
-
-    var activeColorToggle = helpers.toggleRow(
-      "Lit When Open",
-      helpers.idPrefix + "door-window-active-color",
-      doorWindowActiveColorEnabled(b)
-    );
-    panel.appendChild(activeColorToggle.row);
-
-    activeColorToggle.input.addEventListener("change", function () {
-      setDoorWindowActiveColorEnabled(b, this.checked);
-      helpers.saveField("options", b.options);
+    var openIconPicker = helpers.renderCardIconPicker(panel, b, helpers, {
+      pickerIdSuffix: "open-icon-picker",
+      idSuffix: "icon-on",
+      field: "icon_on",
+      label: "Open Icon",
+      fallback: function () { return doorWindowOpenIcon(b.precision); },
     });
+
+    helpers.renderCardOptionToggle(panel, b, helpers, Object.assign({}, DOOR_WINDOW_CARD_METADATA.activeColor, {
+      onChange: function (button, cardHelpers, checked) {
+        setDoorWindowActiveColorEnabled(button, checked);
+        cardHelpers.saveField("options", button.options);
+      },
+    }));
 
     function syncIconPicker(picker, value) {
       var preview = picker.querySelector(".sp-icon-picker-preview");
@@ -105,9 +127,7 @@ registerButtonType("door_window", {
     var label = b.label || b.sensor || (subtype === "window" ? "Window" : "Door");
     return {
       iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconSlug(icon) + '"></span>',
-      labelHtml:
-        '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
-        '<span class="sp-type-badge mdi mdi-' + (subtype === "window" ? "window-closed" : "door") + '"></span></span>',
+      labelHtml: cardBadgeLabelHtml(helpers, label, subtype === "window" ? "window-closed" : "door"),
     };
   },
 });

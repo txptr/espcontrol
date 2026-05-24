@@ -1,8 +1,42 @@
 // Read-only sensor card: displays either numeric data or a text state.
+var SENSOR_CARD_METADATA = {
+  entity: {
+    label: "Sensor Entity",
+    idSuffix: "sensor",
+    placeholder: "e.g. sensor.living_room_temperature",
+    domains: ["sensor", "binary_sensor", "text_sensor"],
+    bindName: "sensor",
+    rerender: true,
+    requiredMessage: "Add a sensor entity before saving.",
+  },
+  segment: {
+    label: "Type",
+    options: [
+      ["numeric", "Numeric"],
+      ["text", "Text"],
+    ],
+    value: function (b) {
+      return b.precision === "text" ? "text" : "numeric";
+    },
+  },
+  largeNumbers: {
+    label: "Large Sensor Numbers",
+    idSuffix: "large-sensor-numbers",
+    supported: function (b) {
+      return b.precision !== "text";
+    },
+  },
+  preview: {
+    numericBadge: "gauge",
+    textBadge: "format-text",
+  },
+};
+
 registerButtonType("sensor", {
   label: "Sensor",
   allowInSubpage: true,
   hideLabel: true,
+  cardMetadata: SENSOR_CARD_METADATA,
   onSelect: function (b) {
     b.entity = "";
     b.icon_on = "Auto";
@@ -12,35 +46,39 @@ registerButtonType("sensor", {
   },
   renderSettings: function (panel, b, slot, helpers) {
     var isTextMode = b.precision === "text";
-    var isLargeCard = helpers.cardSize === 4;
 
-    var sensorField = helpers.entityField(
-      "Sensor Entity", helpers.idPrefix + "sensor", b.sensor,
-      "e.g. sensor.living_room_temperature",
-      ["sensor", "binary_sensor", "text_sensor"], "sensor", true,
-      "Add a sensor entity before saving.");
-    panel.appendChild(sensorField.field);
+    helpers.renderCardEntityField(panel, b, helpers, SENSOR_CARD_METADATA);
 
-    var mode = helpers.segmentControl([
-      ["numeric", "Numeric"],
-      ["text", "Text"],
-    ], isTextMode ? "text" : "numeric", function (value) { setMode(value, true); });
+    var mode = helpers.renderCardSegmentControl(panel, b, helpers, {
+      segment: Object.assign({}, SENSOR_CARD_METADATA.segment, {
+        onSelect: function (button, cardHelpers, value) {
+          setMode(value, true);
+        },
+      }),
+    });
     var numericBtn = mode.buttons.numeric;
     var textBtn = mode.buttons.text;
-    panel.appendChild(helpers.fieldWithControl("Type", null, mode.segment));
 
     var numericSection = condField();
 
-    var labelField = helpers.textField(
-      "Label", helpers.idPrefix + "label", b.label, "e.g. Living Room", "label", true);
+    var labelField = helpers.renderCardTextField(numericSection, b, helpers, {
+      label: "Label",
+      idSuffix: "label",
+      field: "label",
+      placeholder: "e.g. Living Room",
+      rerender: true,
+    });
     var labelInp = labelField.input;
-    numericSection.appendChild(labelField.field);
 
-    var unitField = helpers.textField(
-      "Unit", helpers.idPrefix + "unit", b.unit, "e.g. \u00B0C", "unit", true);
+    var unitField = helpers.renderCardTextField(numericSection, b, helpers, {
+      label: "Unit",
+      idSuffix: "unit",
+      field: "unit",
+      placeholder: "e.g. \u00B0C",
+      rerender: true,
+    });
     var unitInp = unitField.input;
     unitInp.className = "sp-input";
-    numericSection.appendChild(unitField.field);
 
     var precisionField = helpers.precisionField(helpers.idPrefix + "precision",
       !isTextMode ? (b.precision || "0") : "0", function () {
@@ -50,27 +88,16 @@ registerButtonType("sensor", {
     var precisionSelect = precisionField.select;
     numericSection.appendChild(precisionField.field);
 
-    if (isLargeCard) {
-      var largeNumbersToggle = helpers.toggleRow(
-        "Large Sensor Numbers", helpers.idPrefix + "large-sensor-numbers",
-        sensorLargeNumbersEnabled(b));
-      numericSection.appendChild(largeNumbersToggle.row);
-      largeNumbersToggle.input.addEventListener("change", function () {
-        setSensorLargeNumbersEnabled(b, this.checked);
-        helpers.saveField("options", b.options);
-      });
-    }
+    helpers.renderCardLargeNumbersToggle(numericSection, b, helpers, SENSOR_CARD_METADATA);
     panel.appendChild(numericSection);
 
     var textSection = condField();
-    var textIconPicker = helpers.iconPickerField(
-      helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
-      b.icon || "Auto", function (opt) {
-        b.icon = opt;
-        helpers.saveField("icon", opt);
-      }
-    );
-    textSection.appendChild(textIconPicker);
+    var textIconPicker = helpers.renderCardIconPicker(textSection, b, helpers, {
+      pickerIdSuffix: "icon-picker",
+      idSuffix: "icon",
+      field: "icon",
+      fallback: "Auto",
+    });
     panel.appendChild(textSection);
 
     function setMode(mode, persist) {
@@ -115,27 +142,17 @@ registerButtonType("sensor", {
       var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "cog";
       return {
         iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
-        labelHtml:
-          '<span class="sp-btn-label-row"><span class="sp-btn-label">State</span>' +
-          '<span class="sp-type-badge mdi mdi-format-text"></span></span>',
+        labelHtml: cardBadgeLabelHtml(helpers, "State", SENSOR_CARD_METADATA.preview.textBadge),
       };
     }
 
     var label = b.label || b.sensor || "Sensor";
-    var unit = b.unit ? helpers.escHtml(b.unit) : "";
+    var unit = b.unit || "";
     var prec = parseInt(b.precision || "0", 10) || 0;
     var sampleVal = (0).toFixed(prec);
-    var previewClass = "sp-sensor-preview" +
-      (helpers.cardSize === 4 && sensorLargeNumbersEnabled(b) ? " sp-sensor-preview-large" : "");
     return {
-      iconHtml:
-        '<span class="' + previewClass + '">' +
-          '<span class="sp-sensor-value">' + sampleVal + '</span>' +
-          '<span class="sp-sensor-unit">' + unit + '</span>' +
-        '</span>',
-      labelHtml:
-        '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
-        '<span class="sp-type-badge mdi mdi-gauge"></span></span>',
+      iconHtml: cardSensorPreviewHtml(b, helpers, sampleVal, unit),
+      labelHtml: cardBadgeLabelHtml(helpers, label, SENSOR_CARD_METADATA.preview.numericBadge),
     };
   },
 });

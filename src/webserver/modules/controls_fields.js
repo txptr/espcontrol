@@ -174,8 +174,8 @@ function syncCardLargeNumbersToggle(toggle, b, helpers, visible) {
 function renderCardEntityField(panel, b, helpers, metadata) {
   metadata = metadata || {};
   var entity = metadata.entity || {};
-  var bindName = entity.bindName || "entity";
-  var value = entity.value != null ? cardMetadataValue(entity.value, b, helpers) : b[bindName];
+  var bindName = Object.prototype.hasOwnProperty.call(entity, "bindName") ? entity.bindName : "entity";
+  var value = entity.value != null ? cardMetadataValue(entity.value, b, helpers) : (bindName ? b[bindName] : "");
   var field = helpers.entityField(
     entity.label || "Entity",
     helpers.idPrefix + (entity.idSuffix || "entity"),
@@ -188,6 +188,72 @@ function renderCardEntityField(panel, b, helpers, metadata) {
   );
   panel.appendChild(field.field);
   return field;
+}
+
+function renderCardTextField(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var text = metadata.text || metadata;
+  var bindName = text.bindName || text.field || "label";
+  var value = text.value != null ? cardMetadataValue(text.value, b, helpers) : b[bindName];
+  var control = helpers.textField(
+    text.label || "Label",
+    helpers.idPrefix + (text.idSuffix || bindName),
+    value || "",
+    cardMetadataValue(text.placeholder, b, helpers) || "",
+    bindName,
+    text.rerender !== false
+  );
+  panel.appendChild(control.field);
+  return control;
+}
+
+function renderCardIconPicker(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var icon = metadata.icon || metadata;
+  var fieldName = icon.field || "icon";
+  var fallback = cardMetadataValue(icon.fallback, b, helpers) || "Auto";
+  var picker = helpers.iconPickerField(
+    helpers.idPrefix + (icon.pickerIdSuffix || fieldName + "-picker"),
+    helpers.idPrefix + (icon.idSuffix || fieldName),
+    b[fieldName] || fallback,
+    function (opt) {
+      b[fieldName] = opt || fallback;
+      helpers.saveField(fieldName, b[fieldName]);
+      if (icon.onChange) icon.onChange(b, helpers, b[fieldName]);
+    },
+    icon.label || "Icon"
+  );
+  panel.appendChild(picker);
+  return picker;
+}
+
+function renderCardOptionToggle(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var toggle = metadata.toggle || metadata;
+  var row = helpers.toggleRow(
+    toggle.label || "Enabled",
+    helpers.idPrefix + (toggle.idSuffix || "toggle"),
+    !!cardMetadataValue(toggle.checked, b, helpers)
+  );
+  panel.appendChild(row.row);
+  row.input.addEventListener("change", function () {
+    if (toggle.onChange) toggle.onChange.call(this, b, helpers, this.checked);
+  });
+  return row;
+}
+
+function renderCardSegmentControl(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var segment = metadata.segment || metadata;
+  var control = helpers.segmentControl(
+    segment.options || [],
+    cardMetadataValue(segment.value, b, helpers) || "",
+    function (value, button) {
+      if (segment.onSelect) segment.onSelect(b, helpers, value, button, control);
+    }
+  );
+  panel.appendChild(helpers.fieldWithControl(segment.label || "Type", segment.inputId || null, control.segment));
+  return control;
 }
 
 function cardSensorPreviewHtml(b, helpers, value, unit, extraClass, valueClass) {

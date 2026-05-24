@@ -32,6 +32,33 @@ function fanControlBadgeIcon(type) {
   return "fan-speed-2";
 }
 
+var FAN_CARD_METADATA = {
+  mode: {
+    label: "Type",
+    idSuffix: "fan-control-type",
+    options: FAN_CONTROL_TYPE_OPTIONS,
+    value: function (b) {
+      return normalizeFanControlType(b.type);
+    },
+  },
+  entity: {
+    label: "Fan Entity",
+    idSuffix: "fan-entity",
+    placeholder: "e.g. fan.bedroom",
+    domains: ["fan"],
+    bindName: "entity",
+    rerender: true,
+    requiredMessage: "Add a fan entity before saving.",
+  },
+  labelField: {
+    label: "Label",
+    idSuffix: "fan-label",
+    field: "label",
+    placeholder: "e.g. Bedroom Fan",
+    rerender: true,
+  },
+};
+
 function setFanControlType(b, type, helpers) {
   var nextType = normalizeFanControlType(type);
   if (b.type === nextType) return;
@@ -49,11 +76,13 @@ function setFanControlType(b, type, helpers) {
 }
 
 function renderFanControlTypeField(panel, b, helpers) {
-  panel.appendChild(helpers.selectField(
-    "Type", helpers.idPrefix + "fan-control-type",
-    FAN_CONTROL_TYPE_OPTIONS, normalizeFanControlType(b.type), function () {
+  helpers.renderCardModeSelector(panel, b, helpers, Object.assign({}, FAN_CARD_METADATA, {
+    mode: Object.assign({}, FAN_CARD_METADATA.mode, {
+      onChange: function () {
       setFanControlType(b, this.value, helpers);
-    }).field);
+      },
+    }),
+  }));
 }
 
 function fanTypeFactory(opts) {
@@ -65,6 +94,7 @@ function fanTypeFactory(opts) {
     experimental: "developer",
     isAvailable: opts.hidden ? function () { return false; } : null,
     labelPlaceholder: "e.g. Bedroom Fan",
+    cardMetadata: FAN_CARD_METADATA,
     onSelect: function (b) {
       b.sensor = "";
       b.unit = "";
@@ -88,49 +118,33 @@ function fanTypeFactory(opts) {
 
       renderFanControlTypeField(panel, b, helpers);
 
-      panel.appendChild(helpers.entityField(
-        "Fan Entity",
-        helpers.idPrefix + "fan-entity",
-        b.entity,
-        "e.g. fan.bedroom",
-        ["fan"],
-        "entity",
-        true,
-        "Add a fan entity before saving."
-      ).field);
+      helpers.renderCardEntityField(panel, b, helpers, FAN_CARD_METADATA);
 
-      panel.appendChild(helpers.textField(
-        "Label",
-        helpers.idPrefix + "fan-label",
-        b.label,
-        "e.g. Bedroom Fan",
-        "label",
-        true
-      ).field);
+      helpers.renderCardTextField(panel, b, helpers, FAN_CARD_METADATA.labelField);
 
       if (b.type === "fan_switch") {
-        panel.appendChild(helpers.iconPickerField(
-          helpers.idPrefix + "fan-icon-picker", helpers.idPrefix + "fan-icon",
-          b.icon || "Fan Off", function (opt) {
-            b.icon = opt || "Fan Off";
-            helpers.saveField("icon", b.icon);
-          }, "Off Icon"
-        ));
-        panel.appendChild(helpers.iconPickerField(
-          helpers.idPrefix + "fan-icon-on-picker", helpers.idPrefix + "fan-icon-on",
-          b.icon_on || "Fan", function (opt) {
-            b.icon_on = opt || "Fan";
-            helpers.saveField("icon_on", b.icon_on);
-          }, "On Icon"
-        ));
+        helpers.renderCardIconPicker(panel, b, helpers, {
+          pickerIdSuffix: "fan-icon-picker",
+          idSuffix: "fan-icon",
+          field: "icon",
+          fallback: "Fan Off",
+          label: "Off Icon",
+        });
+        helpers.renderCardIconPicker(panel, b, helpers, {
+          pickerIdSuffix: "fan-icon-on-picker",
+          idSuffix: "fan-icon-on",
+          field: "icon_on",
+          fallback: "Fan",
+          label: "On Icon",
+        });
       } else {
-        panel.appendChild(helpers.iconPickerField(
-          helpers.idPrefix + "fan-icon-picker", helpers.idPrefix + "fan-icon",
-          b.icon || fanControlDefaultIcon(b.type), function (opt) {
-            b.icon = opt || fanControlDefaultIcon(b.type);
-            helpers.saveField("icon", b.icon);
-          }, "Icon"
-        ));
+        helpers.renderCardIconPicker(panel, b, helpers, {
+          pickerIdSuffix: "fan-icon-picker",
+          idSuffix: "fan-icon",
+          field: "icon",
+          fallback: function () { return fanControlDefaultIcon(b.type); },
+          label: "Icon",
+        });
       }
     },
     renderPreview: function (b, helpers) {
@@ -146,9 +160,7 @@ function fanTypeFactory(opts) {
       }
       return {
         iconHtml: iconHtml,
-        labelHtml:
-          '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
-          '<span class="sp-type-badge mdi mdi-' + fanControlBadgeIcon(type) + '"></span></span>',
+        labelHtml: cardBadgeLabelHtml(helpers, label, fanControlBadgeIcon(type)),
       };
     },
   };
