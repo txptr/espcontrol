@@ -9,8 +9,10 @@ slugs; beta manifests are optional but must be internally valid when present.
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stdout
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import io
 import json
 from pathlib import Path
 import sys
@@ -184,7 +186,11 @@ def self_test() -> None:
         thread.start()
         url = f"http://127.0.0.1:{server.server_port}"
         try:
-            verify_public_firmware(url, ["required-panel", "optional-panel"], {"optional-panel"}, 1, 0)
+            warning_output = io.StringIO()
+            with redirect_stdout(warning_output):
+                verify_public_firmware(url, ["required-panel", "optional-panel"], {"optional-panel"}, 1, 0)
+            if "optional slug optional-panel" not in warning_output.getvalue():
+                raise PublicFirmwareError("self-test expected missing optional firmware to warn")
             try:
                 verify_public_firmware(url, ["missing-panel"], set(), 1, 0)
             except PublicFirmwareError:
