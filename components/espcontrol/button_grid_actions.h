@@ -10,40 +10,16 @@ inline bool is_button_entity(const std::string &entity_id) {
 
 // Press HA button entities; toggle other bound entities.
 inline void send_toggle_action(const std::string &entity_id) {
-  esphome::api::HomeassistantActionRequest req;
-  req.service = is_button_entity(entity_id)
-    ? decltype(req.service)("button.press")
-    : decltype(req.service)("homeassistant.toggle");
-  req.is_event = false;
-  req.data.init(1);
-  auto &kv = req.data.emplace_back();
-  kv.key = decltype(kv.key)("entity_id");
-  kv.value = decltype(kv.value)(entity_id.c_str());
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_send_entity_action(entity_id,
+    is_button_entity(entity_id) ? "button.press" : "homeassistant.toggle");
 }
 
 inline void send_turn_off_action(const std::string &entity_id) {
-  if (entity_id.empty()) return;
-  esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)("homeassistant.turn_off");
-  req.is_event = false;
-  req.data.init(1);
-  auto &kv = req.data.emplace_back();
-  kv.key = decltype(kv.key)("entity_id");
-  kv.value = decltype(kv.value)(entity_id.c_str());
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_send_entity_action(entity_id, "homeassistant.turn_off");
 }
 
 inline void send_turn_on_action(const std::string &entity_id) {
-  if (entity_id.empty()) return;
-  esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)("homeassistant.turn_on");
-  req.is_event = false;
-  req.data.init(1);
-  auto &kv = req.data.emplace_back();
-  kv.key = decltype(kv.key)("entity_id");
-  kv.value = decltype(kv.value)(entity_id.c_str());
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_send_entity_action(entity_id, "homeassistant.turn_on");
 }
 
 inline bool action_card_requires_value(const std::string &action) {
@@ -77,30 +53,16 @@ inline void send_action_card_action(const ParsedCfg &p) {
   if (value_key && p.unit.empty()) return;
 
   esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)(p.sensor.c_str());
-  req.is_event = false;
-  req.data.init(value_key ? 2 : 1);
-  auto &entity_kv = req.data.emplace_back();
-  entity_kv.key = decltype(entity_kv.key)("entity_id");
-  entity_kv.value = decltype(entity_kv.value)(p.entity.c_str());
+  if (!ha_action_begin(req, p.sensor.c_str(), false, value_key ? 2 : 1)) return;
+  ha_action_add_entity(req, p.entity);
   if (value_key) {
-    auto &value_kv = req.data.emplace_back();
-    value_kv.key = decltype(value_kv.key)(value_key);
-    value_kv.value = decltype(value_kv.value)(p.unit.c_str());
+    ha_action_add_data(req, value_key, p.unit.c_str());
   }
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_action_send(req);
 }
 
 inline void send_lock_action(const std::string &entity_id, const std::string &state) {
-  if (entity_id.empty()) return;
-  esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)(state == "locked" ? "lock.unlock" : "lock.lock");
-  req.is_event = false;
-  req.data.init(1);
-  auto &kv = req.data.emplace_back();
-  kv.key = decltype(kv.key)("entity_id");
-  kv.value = decltype(kv.value)(entity_id.c_str());
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_send_entity_action(entity_id, state == "locked" ? "lock.unlock" : "lock.lock");
 }
 
 inline void send_lock_action(LockCardCtx *ctx) {
@@ -109,20 +71,13 @@ inline void send_lock_action(LockCardCtx *ctx) {
 }
 
 inline void send_lock_command_action(const ParsedCfg &p) {
-  if (p.entity.empty() || esphome::api::global_api_server == nullptr) return;
+  if (p.entity.empty()) return;
   const char *service = nullptr;
   if (p.sensor == "lock") service = "lock.lock";
   else if (p.sensor == "unlock") service = "lock.unlock";
   if (service == nullptr) return;
 
-  esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)(service);
-  req.is_event = false;
-  req.data.init(1);
-  auto &kv = req.data.emplace_back();
-  kv.key = decltype(kv.key)("entity_id");
-  kv.value = decltype(kv.value)(p.entity.c_str());
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_send_entity_action(p.entity, service);
 }
 
 // ── Slider card helpers ────────────────────────────────────────────────
@@ -172,30 +127,25 @@ inline uint32_t next_cover_stop_call_id() {
 
 inline void send_cover_command_action(const ParsedCfg &p) {
   const char *service = cover_command_service(p.sensor);
-  if (p.entity.empty() || service == nullptr || esphome::api::global_api_server == nullptr) return;
+  if (p.entity.empty() || service == nullptr) return;
 
   bool has_position = p.sensor == "set_position";
   bool wants_stop_response = p.sensor == "stop";
   esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)(service);
-  req.is_event = false;
+  uint32_t call_id = wants_stop_response ? next_cover_stop_call_id() : 0;
+  if (!ha_action_begin(req, service, false, has_position ? 2 : 1, call_id)) return;
   if (wants_stop_response) {
-    req.call_id = next_cover_stop_call_id();
+    req.call_id = call_id;
   }
-  req.data.init(has_position ? 2 : 1);
-  auto &entity_kv = req.data.emplace_back();
-  entity_kv.key = decltype(entity_kv.key)("entity_id");
-  entity_kv.value = decltype(entity_kv.value)(p.entity.c_str());
+  ha_action_add_entity(req, p.entity);
   if (has_position) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", cover_position_value(p.unit));
-    auto &position_kv = req.data.emplace_back();
-    position_kv.key = decltype(position_kv.key)("position");
-    position_kv.value = decltype(position_kv.value)(buf);
+    ha_action_add_data(req, "position", buf);
   }
   if (wants_stop_response) {
     std::string entity_id = p.entity;
-    esphome::api::global_api_server->register_action_response_callback(
+    ha_register_action_response_callback(
       req.call_id,
       [entity_id](const esphome::api::ActionResponse &response) {
         if (response.is_success()) return;
@@ -204,69 +154,45 @@ inline void send_cover_command_action(const ParsedCfg &p) {
         send_toggle_action(entity_id);
       });
   }
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_action_send(req);
 }
 
 // Send HA action for a slider change: toggle (value<0), brightness, or cover position/tilt
 inline void send_slider_action(const std::string &entity_id, int value, bool cover_tilt = false) {
   esphome::api::HomeassistantActionRequest req;
-  req.is_event = false;
   if (value < 0) {
-    req.service = decltype(req.service)("homeassistant.toggle");
-    req.data.init(1);
-    auto &kv = req.data.emplace_back();
-    kv.key = decltype(kv.key)("entity_id");
-    kv.value = decltype(kv.value)(entity_id.c_str());
+    if (!ha_action_begin(req, "homeassistant.toggle", false, 1)) return;
+    ha_action_add_entity(req, entity_id);
   } else if (is_cover_entity(entity_id)) {
-    req.service = decltype(req.service)(
-      cover_tilt ? "cover.set_cover_tilt_position" : "cover.set_cover_position");
-    req.data.init(2);
-    auto &kv1 = req.data.emplace_back();
-    kv1.key = decltype(kv1.key)("entity_id");
-    kv1.value = decltype(kv1.value)(entity_id.c_str());
-    auto &kv2 = req.data.emplace_back();
-    kv2.key = decltype(kv2.key)(cover_tilt ? "tilt_position" : "position");
+    if (!ha_action_begin(req,
+      cover_tilt ? "cover.set_cover_tilt_position" : "cover.set_cover_position",
+      false, 2)) return;
+    ha_action_add_entity(req, entity_id);
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", value);
-    kv2.value = decltype(kv2.value)(buf);
+    ha_action_add_data(req, cover_tilt ? "tilt_position" : "position", buf);
   } else if (is_fan_entity(entity_id)) {
     if (value == 0) {
-      req.service = decltype(req.service)("fan.turn_off");
-      req.data.init(1);
-      auto &kv = req.data.emplace_back();
-      kv.key = decltype(kv.key)("entity_id");
-      kv.value = decltype(kv.value)(entity_id.c_str());
+      if (!ha_action_begin(req, "fan.turn_off", false, 1)) return;
+      ha_action_add_entity(req, entity_id);
     } else {
-      req.service = decltype(req.service)("fan.turn_on");
-      req.data.init(2);
-      auto &kv1 = req.data.emplace_back();
-      kv1.key = decltype(kv1.key)("entity_id");
-      kv1.value = decltype(kv1.value)(entity_id.c_str());
-      auto &kv2 = req.data.emplace_back();
-      kv2.key = decltype(kv2.key)("percentage");
+      if (!ha_action_begin(req, "fan.turn_on", false, 2)) return;
+      ha_action_add_entity(req, entity_id);
       char buf[8];
       snprintf(buf, sizeof(buf), "%d", value);
-      kv2.value = decltype(kv2.value)(buf);
+      ha_action_add_data(req, "percentage", buf);
     }
   } else if (value == 0) {
-    req.service = decltype(req.service)("light.turn_off");
-    req.data.init(1);
-    auto &kv = req.data.emplace_back();
-    kv.key = decltype(kv.key)("entity_id");
-    kv.value = decltype(kv.value)(entity_id.c_str());
+    if (!ha_action_begin(req, "light.turn_off", false, 1)) return;
+    ha_action_add_entity(req, entity_id);
   } else {
-    req.service = decltype(req.service)("light.turn_on");
-    req.data.init(2);
-    auto &kv1 = req.data.emplace_back();
-    kv1.key = decltype(kv1.key)("entity_id");
-    kv1.value = decltype(kv1.value)(entity_id.c_str());
-    auto &kv2 = req.data.emplace_back();
-    kv2.key = decltype(kv2.key)("brightness_pct");
+    if (!ha_action_begin(req, "light.turn_on", false, 2)) return;
+    ha_action_add_entity(req, entity_id);
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", value);
-    kv2.value = decltype(kv2.value)(buf);
+    ha_action_add_data(req, "brightness_pct", buf);
   }
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_action_send(req);
 }
 
 // Parse "min-max" kelvin range from the unit config field (e.g. "2000-6500").
@@ -304,23 +230,17 @@ inline lv_color_t kelvin_to_fill_color(int k, int /*min_k*/, int /*max_k*/) {
 
 // Send light.turn_on with color_temp_kelvin mapped from 0-100 pct over [min_k, max_k].
 inline void send_light_temp_action(const std::string &entity_id, int pct, int min_k, int max_k) {
-  if (entity_id.empty()) return;
   esphome::api::HomeassistantActionRequest req;
-  req.is_event = false;
-  req.service = decltype(req.service)("light.turn_on");
-  req.data.init(2);
-  auto &kv1 = req.data.emplace_back();
-  kv1.key = decltype(kv1.key)("entity_id");
-  kv1.value = decltype(kv1.value)(entity_id.c_str());
-  auto &kv2 = req.data.emplace_back();
-  kv2.key = decltype(kv2.key)("color_temp_kelvin");
+  if (!ha_action_begin(req, "light.turn_on", false, 2)) return;
+  if (entity_id.empty()) return;
+  ha_action_add_entity(req, entity_id);
   int kelvin = min_k + (pct * (max_k - min_k)) / 100;
   if (kelvin < min_k) kelvin = min_k;
   if (kelvin > max_k) kelvin = max_k;
   char buf[8];
   snprintf(buf, sizeof(buf), "%d", kelvin);
-  kv2.value = decltype(kv2.value)(buf);
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_action_add_data(req, "color_temp_kelvin", buf);
+  ha_action_send(req);
 }
 
 inline const char *light_temp_icon(const std::string &icon) {
@@ -352,18 +272,12 @@ inline void send_media_player_action(const std::string &entity_id,
                                      const char *value = nullptr) {
   if (entity_id.empty() || service == nullptr || service[0] == '\0') return;
   esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)(service);
-  req.is_event = false;
-  req.data.init(value_key && value ? 2 : 1);
-  auto &entity_kv = req.data.emplace_back();
-  entity_kv.key = decltype(entity_kv.key)("entity_id");
-  entity_kv.value = decltype(entity_kv.value)(entity_id.c_str());
+  if (!ha_action_begin(req, service, false, value_key && value ? 2 : 1)) return;
+  ha_action_add_entity(req, entity_id);
   if (value_key && value) {
-    auto &value_kv = req.data.emplace_back();
-    value_kv.key = decltype(value_kv.key)(value_key);
-    value_kv.value = decltype(value_kv.value)(value);
+    ha_action_add_data(req, value_key, value);
   }
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_action_send(req);
 }
 
 inline void send_media_volume_action(const std::string &entity_id, int value) {
@@ -425,18 +339,12 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       label = buf;
     }
     esphome::api::HomeassistantActionRequest req;
-    req.service = decltype(req.service)("esphome.push_button_pressed");
-    req.is_event = true;
-    req.data.init(2);
-    auto &kv1 = req.data.emplace_back();
-    kv1.key = decltype(kv1.key)("label");
-    kv1.value = decltype(kv1.value)(label.c_str());
-    auto &kv2 = req.data.emplace_back();
-    kv2.key = decltype(kv2.key)("slot");
+    if (!ha_action_begin(req, "esphome.push_button_pressed", true, 2)) return;
+    ha_action_add_data(req, "label", label.c_str());
     char slot_buf[8];
     snprintf(slot_buf, sizeof(slot_buf), "%d", slot_num);
-    kv2.value = decltype(kv2.value)(slot_buf);
-    esphome::api::global_api_server->send_homeassistant_action(req);
+    ha_action_add_data(req, "slot", slot_buf);
+    ha_action_send(req);
   } else if (p.type == "subpage") {
     lv_obj_t *sub_scr = (lv_obj_t *)lv_obj_get_user_data(btn_obj);
     if (sub_scr)

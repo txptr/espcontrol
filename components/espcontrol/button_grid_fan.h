@@ -243,20 +243,7 @@ inline void send_fan_action(const std::string &entity_id,
                             const char *service,
                             const char *data_key = nullptr,
                             const char *data_value = nullptr) {
-  if (entity_id.empty() || service == nullptr || esphome::api::global_api_server == nullptr) return;
-  esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)(service);
-  req.is_event = false;
-  req.data.init(data_key && data_value ? 2 : 1);
-  auto &entity_kv = req.data.emplace_back();
-  entity_kv.key = decltype(entity_kv.key)("entity_id");
-  entity_kv.value = decltype(entity_kv.value)(entity_id.c_str());
-  if (data_key && data_value) {
-    auto &data_kv = req.data.emplace_back();
-    data_kv.key = decltype(data_kv.key)(data_key);
-    data_kv.value = decltype(data_kv.value)(data_value);
-  }
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_send_entity_action(entity_id, service, data_key, data_value);
 }
 
 inline void send_fan_switch_action(FanCardCtx *ctx) {

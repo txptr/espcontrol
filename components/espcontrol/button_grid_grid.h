@@ -1250,13 +1250,9 @@ inline void grid_phase2(
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
           std::string *label = (std::string *)lv_event_get_user_data(e);
           esphome::api::HomeassistantActionRequest req;
-          req.service = decltype(req.service)("esphome.push_button_pressed");
-          req.is_event = true;
-          req.data.init(1);
-          auto &kv = req.data.emplace_back();
-          kv.key = decltype(kv.key)("label");
-          kv.value = decltype(kv.value)(label->c_str());
-          esphome::api::global_api_server->send_homeassistant_action(req);
+          if (!ha_action_begin(req, "esphome.push_button_pressed", true, 1)) return;
+          ha_action_add_data(req, "label", label->c_str());
+          ha_action_send(req);
         }, LV_EVENT_CLICKED, label);
         continue;
       }

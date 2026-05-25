@@ -901,27 +901,24 @@ inline uint32_t next_weather_forecast_call_id() {
 
 inline void request_weather_forecast_entity(const std::string &entity_id,
                                             const std::string &day) {
-  if (!weather_forecast_entity_id_safe(entity_id) || esphome::api::global_api_server == nullptr) {
+  if (!weather_forecast_entity_id_safe(entity_id) || !ha_api_available()) {
     apply_weather_forecast_to_entity(entity_id, day, false, 0, 0, "");
     return;
   }
 
   esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)("weather.get_forecasts");
-  req.is_event = false;
-  req.call_id = next_weather_forecast_call_id();
+  uint32_t call_id = next_weather_forecast_call_id();
+  if (!ha_action_begin(req, "weather.get_forecasts", false, 2, call_id)) {
+    apply_weather_forecast_to_entity(entity_id, day, false, 0, 0, "");
+    return;
+  }
   req.wants_response = true;
   std::string response_template = weather_forecast_response_template(entity_id, day);
   req.response_template = decltype(req.response_template)(response_template);
-  req.data.init(2);
-  auto &entity_kv = req.data.emplace_back();
-  entity_kv.key = decltype(entity_kv.key)("entity_id");
-  entity_kv.value = decltype(entity_kv.value)(entity_id.c_str());
-  auto &type_kv = req.data.emplace_back();
-  type_kv.key = decltype(type_kv.key)("type");
-  type_kv.value = decltype(type_kv.value)("daily");
+  ha_action_add_entity(req, entity_id);
+  ha_action_add_data(req, "type", "daily");
 
-  esphome::api::global_api_server->register_action_response_callback(
+  ha_register_action_response_callback(
     req.call_id,
     [entity_id, day](const esphome::api::ActionResponse &response) {
       if (!response.is_success()) {
@@ -945,7 +942,7 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
       }
       apply_weather_forecast_to_entity(entity_id, day, valid, high, low, unit);
     });
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_action_send(req);
 }
 
 inline void refresh_weather_forecast_cards() {

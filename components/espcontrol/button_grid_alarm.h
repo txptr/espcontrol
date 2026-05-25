@@ -637,29 +637,23 @@ inline std::string alarm_action_failure_message(const esphome::api::ActionRespon
 
 inline void send_alarm_action(AlarmActionCtx *action, const std::string &code) {
   if (!action || !action->card || action->card->entity_id.empty() ||
-      esphome::api::global_api_server == nullptr) return;
+      !ha_api_available()) return;
   const char *service = alarm_action_service(action->mode);
   if (service == nullptr) return;
 
   esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)(service);
-  req.is_event = false;
-  req.call_id = next_alarm_call_id();
-  req.data.init(code.empty() ? 1 : 2);
-  auto &entity_kv = req.data.emplace_back();
-  entity_kv.key = decltype(entity_kv.key)("entity_id");
-  entity_kv.value = decltype(entity_kv.value)(action->card->entity_id.c_str());
+  uint32_t call_id = next_alarm_call_id();
+  if (!ha_action_begin(req, service, false, code.empty() ? 1 : 2, call_id)) return;
+  ha_action_add_entity(req, action->card->entity_id);
   if (!code.empty()) {
-    auto &code_kv = req.data.emplace_back();
-    code_kv.key = decltype(code_kv.key)("code");
-    code_kv.value = decltype(code_kv.value)(code.c_str());
+    ha_action_add_data(req, "code", code.c_str());
   }
 
   std::string entity_id = action->card->entity_id;
   std::string service_name = service;
   AlarmCardCtx *card = action->card;
   alarm_start_pending_action(card, action->mode, !code.empty());
-  esphome::api::global_api_server->register_action_response_callback(
+  ha_register_action_response_callback(
     req.call_id,
     [entity_id, service_name, card](const esphome::api::ActionResponse &response) {
       if (response.is_success()) return;
@@ -669,7 +663,7 @@ inline void send_alarm_action(AlarmActionCtx *action, const std::string &code) {
         service_name.c_str(), entity_id.c_str(), message.c_str());
       alarm_show_failure(card, message);
     });
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_action_send(req);
 }
 
 inline uint32_t alarm_control_active_color(AlarmCardCtx *ctx, const std::string &mode) {

@@ -633,18 +633,12 @@ inline void climate_send_action(const std::string &entity_id,
                                 const std::vector<std::pair<const char *, std::string>> &data) {
   if (entity_id.empty() || service == nullptr || service[0] == '\0') return;
   esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)(service);
-  req.is_event = false;
-  req.data.init(data.size() + 1);
-  auto &entity_kv = req.data.emplace_back();
-  entity_kv.key = decltype(entity_kv.key)("entity_id");
-  entity_kv.value = decltype(entity_kv.value)(entity_id.c_str());
+  if (!ha_action_begin(req, service, false, data.size() + 1)) return;
+  ha_action_add_entity(req, entity_id);
   for (const auto &item : data) {
-    auto &kv = req.data.emplace_back();
-    kv.key = decltype(kv.key)(item.first);
-    kv.value = decltype(kv.value)(item.second.c_str());
+    ha_action_add_data(req, item.first, item.second.c_str());
   }
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  ha_action_send(req);
 }
 
 inline std::string climate_service_temp_value(int tenths) {

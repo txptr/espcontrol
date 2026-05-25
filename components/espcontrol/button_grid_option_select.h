@@ -204,19 +204,8 @@ inline std::vector<std::string> option_select_parse_options(const std::string &r
 inline void send_option_select_action(OptionSelectCtx *ctx, const std::string &option) {
   if (!ctx || ctx->entity_id.empty() || option.empty()) return;
   const char *service = option_select_service_for_entity(ctx->entity_id);
-  if (service == nullptr || esphome::api::global_api_server == nullptr) return;
-
-  esphome::api::HomeassistantActionRequest req;
-  req.service = decltype(req.service)(service);
-  req.is_event = false;
-  req.data.init(2);
-  auto &entity_kv = req.data.emplace_back();
-  entity_kv.key = decltype(entity_kv.key)("entity_id");
-  entity_kv.value = decltype(entity_kv.value)(ctx->entity_id.c_str());
-  auto &option_kv = req.data.emplace_back();
-  option_kv.key = decltype(option_kv.key)("option");
-  option_kv.value = decltype(option_kv.value)(option.c_str());
-  esphome::api::global_api_server->send_homeassistant_action(req);
+  if (service == nullptr) return;
+  ha_send_entity_action(ctx->entity_id, service, "option", option.c_str());
 
   ctx->current_option = option;
   option_select_apply_card_text(ctx);
