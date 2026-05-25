@@ -530,8 +530,7 @@ inline void alarm_hide_toast() {
 }
 
 inline lv_coord_t alarm_failure_banner_width(AlarmCardCtx *ctx) {
-  lv_disp_t *disp = lv_disp_get_default();
-  lv_coord_t screen_w = disp ? lv_disp_get_hor_res(disp) : 480;
+  lv_coord_t screen_w = control_modal_screen_width();
   int cols = ctx && ctx->grid_cols > 0 ? ctx->grid_cols : 3;
   if (cols < 1) cols = 1;
 
@@ -678,7 +677,7 @@ inline lv_coord_t alarm_control_mode_button_radius(const ControlModalLayout &lay
                                                    lv_coord_t width,
                                                    lv_coord_t height) {
   lv_coord_t radius = (width < height ? width : height) / 2;
-  if (control_modal_is_jc4880p443_size(layout)) {
+  if (control_modal_uses_compact_portrait_tuning(layout)) {
     lv_coord_t compact_radius = control_modal_scaled_px(10, layout.short_side);
     if (compact_radius < 8) compact_radius = 8;
     if (radius > compact_radius) radius = (radius + compact_radius) / 2;
@@ -689,7 +688,7 @@ inline lv_coord_t alarm_control_mode_button_radius(const ControlModalLayout &lay
 inline lv_coord_t alarm_control_rail_radius(const ControlModalLayout &layout,
                                             lv_coord_t control_radius,
                                             lv_coord_t button_inset) {
-  if (control_modal_is_jc4880p443_size(layout)) {
+  if (control_modal_uses_compact_portrait_tuning(layout)) {
     lv_coord_t radius = control_modal_scaled_px(14, layout.short_side);
     if (radius < control_radius) radius = control_radius;
     return (control_radius + button_inset + radius) / 2;
@@ -831,7 +830,7 @@ inline lv_coord_t alarm_pin_key_size(lv_coord_t keypad_w, lv_coord_t keypad_h,
 
 inline lv_coord_t alarm_pin_label_y(const ControlModalLayout &layout, lv_coord_t pin_h) {
   lv_coord_t pin_y = layout.inset + (layout.back_size - pin_h) / 2;
-  if (control_modal_is_jc4880p443_size(layout)) {
+  if (control_modal_uses_compact_portrait_tuning(layout)) {
     pin_y += control_modal_scaled_px(16, layout.short_side);
   }
   if (pin_y < layout.inset) pin_y = layout.inset;
@@ -1037,7 +1036,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_clear_flag(ui.arming_view, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.arming_view, LV_OBJ_FLAG_HIDDEN);
 
-  bool jc4880p443_layout = control_modal_is_jc4880p443_size(layout);
+  bool jc4880p443_layout = control_modal_uses_compact_portrait_tuning(layout);
   lv_coord_t status_center_y = -control_modal_scaled_px(64, layout.short_side);
   lv_coord_t countdown_gap = control_modal_scaled_px(18, layout.short_side);
   lv_coord_t disarm_extra_padding = 0;

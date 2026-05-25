@@ -4,14 +4,14 @@
 
 // Shared control modal helpers.
 
-constexpr lv_coord_t CONTROL_MODAL_REFERENCE_SIDE_PX = 480;
-constexpr lv_coord_t CONTROL_MODAL_ARC_STROKE_REF_PX = 17;
-constexpr lv_coord_t CONTROL_MODAL_BACK_BUTTON_REF_PX = 46;
-constexpr lv_coord_t CONTROL_MODAL_BUTTON_REF_PX = 80;
-constexpr lv_coord_t CONTROL_MODAL_INSET_REF_PX = 18;
-constexpr lv_coord_t CONTROL_MODAL_CONTROLS_GAP_REF_PX = 24;
-constexpr lv_coord_t CONTROL_MODAL_CONTROLS_DOWN_REF_PX = 22;
-constexpr lv_coord_t CONTROL_MODAL_TITLE_GAP_REF_PX = 10;
+constexpr lv_coord_t CONTROL_MODAL_REFERENCE_SIDE_PX = DISPLAY_MODAL_REFERENCE_SIDE_PX;
+constexpr lv_coord_t CONTROL_MODAL_ARC_STROKE_REF_PX = DISPLAY_MODAL_ARC_STROKE_REF_PX;
+constexpr lv_coord_t CONTROL_MODAL_BACK_BUTTON_REF_PX = DISPLAY_MODAL_BACK_BUTTON_REF_PX;
+constexpr lv_coord_t CONTROL_MODAL_BUTTON_REF_PX = DISPLAY_MODAL_BUTTON_REF_PX;
+constexpr lv_coord_t CONTROL_MODAL_INSET_REF_PX = DISPLAY_MODAL_INSET_REF_PX;
+constexpr lv_coord_t CONTROL_MODAL_CONTROLS_GAP_REF_PX = DISPLAY_MODAL_CONTROLS_GAP_REF_PX;
+constexpr lv_coord_t CONTROL_MODAL_CONTROLS_DOWN_REF_PX = DISPLAY_MODAL_CONTROLS_DOWN_REF_PX;
+constexpr lv_coord_t CONTROL_MODAL_TITLE_GAP_REF_PX = DISPLAY_MODAL_TITLE_GAP_REF_PX;
 
 enum class ControlModalKind {
   NONE,
@@ -187,12 +187,32 @@ inline void control_modal_close_nested_menu() {
 }
 
 inline lv_coord_t control_modal_scaled_px(lv_coord_t px, lv_coord_t short_side) {
-  return px * short_side / CONTROL_MODAL_REFERENCE_SIDE_PX;
+  return display_modal_scaled_px(px, short_side);
 }
 
 inline bool control_modal_is_jc4880p443_size(const ControlModalLayout &layout) {
-  return (layout.sw == 480 && layout.sh == 800) ||
-         (layout.sw == 800 && layout.sh == 480);
+  return display_modal_is_jc4880p443_size(layout.sw, layout.sh);
+}
+
+inline bool control_modal_uses_compact_portrait_tuning(const ControlModalLayout &layout) {
+  return control_modal_is_jc4880p443_size(layout);
+}
+
+inline bool control_modal_uses_square_tuning(const ControlModalLayout &layout) {
+  return display_modal_is_square_size(layout.sw, layout.sh);
+}
+
+inline bool control_modal_uses_4848_tuning(const ControlModalLayout &layout) {
+  return display_modal_is_4848_size(layout.sw, layout.sh);
+}
+
+inline lv_coord_t control_modal_screen_width(lv_coord_t fallback = 480) {
+  lv_disp_t *disp = lv_disp_get_default();
+  return disp ? lv_disp_get_hor_res(disp) : fallback;
+}
+
+inline lv_coord_t control_modal_controls_down_px(const ControlModalLayout &layout) {
+  return control_modal_scaled_px(CONTROL_MODAL_CONTROLS_DOWN_REF_PX, layout.short_side);
 }
 
 inline lv_coord_t control_modal_card_radius(lv_obj_t *btn) {
@@ -227,7 +247,7 @@ inline ControlModalLayout control_modal_calc_layout(int width_compensation_perce
   if (layout.inset < 8) layout.inset = 8;
   layout.back_inset_x = layout.inset;
   layout.back_inset_y = layout.inset;
-  if (control_modal_is_jc4880p443_size(layout)) {
+  if (control_modal_uses_compact_portrait_tuning(layout)) {
     lv_coord_t back_offset = control_modal_scaled_px(12, layout.short_side);
     layout.back_inset_x += back_offset;
     layout.back_inset_y += back_offset;
@@ -257,7 +277,7 @@ inline ControlModalLayout control_modal_calc_layout(int width_compensation_perce
   layout.arc_center_y = 0;
   layout.value_center_y = layout.arc_stroke / 2;
   layout.controls_center_y = layout.arc_size / 2 - layout.btn_size / 2 - layout.inset +
-    control_modal_scaled_px(CONTROL_MODAL_CONTROLS_DOWN_REF_PX, layout.short_side);
+    control_modal_controls_down_px(layout);
   return layout;
 }
 
