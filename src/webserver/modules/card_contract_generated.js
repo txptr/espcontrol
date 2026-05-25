@@ -172,6 +172,32 @@ var CARD_CONTRACT_CARDS = {
     "domains": [
       "cover"
     ],
+    "options": [
+      {
+        "name": "cover_mode",
+        "label": "Type",
+        "kind": "choice",
+        "values": [
+          "",
+          "tilt",
+          "toggle",
+          "open",
+          "close",
+          "stop",
+          "set_position"
+        ],
+        "defaultValue": ""
+      },
+      {
+        "name": "cover_position",
+        "label": "Position",
+        "kind": "number",
+        "defaultValue": "50",
+        "min": 0,
+        "max": 100,
+        "step": 1
+      }
+    ],
     "default": {
       "entity": "",
       "label": "",

@@ -6,17 +6,29 @@ function coverCommandMode(mode) {
   return mode === "open" || mode === "close" || mode === "stop" || mode === "set_position";
 }
 
+function coverModeOptionValues(allowCommands) {
+  var spec = cardContractOptionSpec("cover", "cover_mode");
+  var values = spec && spec.values ? spec.values : ["", "tilt", "toggle", "open", "close", "stop", "set_position"];
+  return values.filter(function (value) {
+    return allowCommands || !coverCommandMode(value);
+  });
+}
+
 function normalizeCoverMode(mode, allowCommands) {
-  if (mode === "tilt" || mode === "toggle") return mode;
-  if (allowCommands && coverCommandMode(mode)) return mode;
-  return "";
+  mode = String(mode || "");
+  return coverModeOptionValues(allowCommands).indexOf(mode) >= 0 ? mode : "";
 }
 
 function normalizeCoverPosition(value) {
   var n = parseInt(value, 10);
-  if (!isFinite(n)) n = 50;
-  if (n < 0) n = 0;
-  if (n > 100) n = 100;
+  var spec = cardContractOptionSpec("cover", "cover_position") || {};
+  var fallback = parseInt(spec.defaultValue, 10);
+  var min = typeof spec.min === "number" ? spec.min : 0;
+  var max = typeof spec.max === "number" ? spec.max : 100;
+  if (!isFinite(fallback)) fallback = 50;
+  if (!isFinite(n)) n = fallback;
+  if (n < min) n = min;
+  if (n > max) n = max;
   return String(n);
 }
 

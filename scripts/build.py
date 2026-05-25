@@ -271,14 +271,17 @@ def validate_card_contract(data):
                             errors.append(f"{option_path}.name must be a non-empty string")
                         if not isinstance(option.get("label"), str) or not option.get("label"):
                             errors.append(f"{option_path}.label must be a non-empty string")
-                        if "kind" in option and option.get("kind") not in {"choice", "flag", "text"}:
-                            errors.append(f"{option_path}.kind must be choice, flag, or text")
+                        if "kind" in option and option.get("kind") not in {"choice", "flag", "number", "text"}:
+                            errors.append(f"{option_path}.kind must be choice, flag, number, or text")
                         for key in ("values", "storage"):
                             value = option.get(key)
                             if value is not None and (not isinstance(value, list) or not all(isinstance(item, str) for item in value)):
                                 errors.append(f"{option_path}.{key} must be a list of strings")
                         if "defaultValue" in option and not isinstance(option.get("defaultValue"), str):
                             errors.append(f"{option_path}.defaultValue must be a string")
+                        for key in ("min", "max", "step"):
+                            if key in option and not isinstance(option.get(key), (int, float)):
+                                errors.append(f"{option_path}.{key} must be a number")
                         if "defaultValueByMode" in option:
                             value = option.get("defaultValueByMode")
                             if not isinstance(value, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in value.items()):
