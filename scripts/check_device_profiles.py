@@ -14,10 +14,16 @@ import check_public_firmware
 WEB_OUTPUT_DIR = ROOT / "docs" / "public" / "webserver"
 DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
+GOLDEN_CONFIG = ROOT / "scripts" / "fixtures" / "config_golden.json"
 
 
 def read_json(path: Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def golden_required_slugs() -> list[str]:
+    fixture = read_json(GOLDEN_CONFIG)
+    return fixture["deviceProfiles"]["requiredSlugs"]
 
 
 def docs_stem(capability: dict) -> str:
@@ -81,6 +87,7 @@ def test_public_firmware_slugs(profile_slugs: list[str]) -> None:
 def main() -> int:
     profiles = load_device_profiles()
     profile_slugs = list(profiles.keys())
+    assert profile_slugs == golden_required_slugs(), "supported device slug fixture is stale"
     test_public_device_capabilities(profile_slugs)
     test_generated_web(profile_slugs)
     test_generated_yaml(profiles)

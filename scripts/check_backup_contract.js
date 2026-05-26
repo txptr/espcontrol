@@ -2,12 +2,14 @@
 "use strict";
 
 const assert = require("assert");
+const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 const { loadBundledWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "www.js");
+const GOLDEN_CONFIG = path.join(ROOT, "scripts", "fixtures", "config_golden.json");
 
 function loadHooks() {
   const sandbox = {
@@ -56,6 +58,7 @@ function throwsBackupMessage(fn, expected) {
 }
 
 const hooks = loadHooks();
+const golden = JSON.parse(fs.readFileSync(GOLDEN_CONFIG, "utf8"));
 assert(hooks, "web config helpers were not exported");
 
 const v2 = hooks.createBackupConfig({
@@ -133,20 +136,7 @@ assert.strictEqual(sameDevicePlan.button_order, "1,2d", "same-device import keep
 assert.deepStrictEqual(buttonShape(sameDevicePlan.buttons[1]), buttonShape(v2.buttons[1]), "same-device import keeps migrated button");
 assert(sameDevicePlan.subpages["1"], "same-device import keeps subpages");
 
-const crossDevicePlan = hooks.planBackupImport({
-  version: 1,
-  device: "large-panel",
-  button_order: "2w,1,3",
-  buttons: [
-    { entity: "light.kitchen", label: "Kitchen", icon: "Auto", icon_on: "Lightbulb" },
-    { entity: "weather.home", label: "Weather", icon: "Auto", icon_on: "Auto", type: "weather_forecast" },
-    { entity: "climate.hall", label: "Hall", type: "climate" },
-    {},
-  ],
-  subpages: {
-    2: "1,B|scene.movie:Movie:Flash:Auto:scene.turn_on::action",
-  },
-}, { device: "small-panel", slots: 2 });
+const crossDevicePlan = hooks.planBackupImport(golden.backup, { device: "small-panel", slots: 2 });
 
 assert.strictEqual(crossDevicePlan.importedCount, 4, "cross-device import records source slot count");
 assert(crossDevicePlan.warnings.some((msg) => msg.includes("different panel")), "cross-device import warns on device mismatch");

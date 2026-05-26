@@ -8,6 +8,7 @@ const vm = require("vm");
 
 const ROOT = path.resolve(__dirname, "..");
 const MODEL_JS = path.join(ROOT, "src", "webserver", "modules", "model_generated.js");
+const GOLDEN_CONFIG = path.join(ROOT, "scripts", "fixtures", "config_golden.json");
 
 function loadModel() {
   const sandbox = {};
@@ -19,6 +20,7 @@ function loadModel() {
 }
 
 const model = loadModel();
+const golden = JSON.parse(fs.readFileSync(GOLDEN_CONFIG, "utf8"));
 
 function plain(value) {
   return JSON.parse(JSON.stringify(value));
@@ -32,6 +34,17 @@ assert.strictEqual(
   model.serializeGridOrder([1, 2, 3, -1, 0, -1, 0, 0], { 2: 2, 3: 3 }),
   "1,2d,3w",
   "grid serialization preserves sparse spanned layout"
+);
+const goldenLayout = model.parseGridOrder(golden.layoutImport.order, 20, 5);
+assert.deepStrictEqual(
+  plain(goldenLayout.grid.slice(0, golden.layoutImport.expectedGridPrefix.length)),
+  golden.layoutImport.expectedGridPrefix,
+  "golden cross-device layout import grid parses in the model"
+);
+assert.deepStrictEqual(
+  plain(goldenLayout.sizes),
+  golden.layoutImport.expectedSizes,
+  "golden cross-device layout import sizes parse in the model"
 );
 
 assert.deepStrictEqual(plain(model.parseSubpageOrder("1,B=Return%3AHome,2d")), {

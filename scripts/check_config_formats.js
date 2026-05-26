@@ -198,22 +198,22 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 const hooks = loadHooks();
 const golden = JSON.parse(fs.readFileSync(GOLDEN_CONFIG, "utf8"));
 assert(hooks, "web config helpers were not exported");
-assert.deepStrictEqual(Array.from(hooks.CARD_CONFIG_FIELDS), [
-  "entity",
-  "label",
-  "icon",
-  "icon_on",
-  "sensor",
-  "unit",
-  "type",
-  "precision",
-  "options",
-], "generated card contract preserves saved field order");
-assert.strictEqual(hooks.cardContractSubpageTypeCode("climate"), "H", "generated contract exposes compact type codes");
+assert.deepStrictEqual(
+  Array.from(hooks.CARD_CONFIG_FIELDS),
+  golden.generatedContract.fields,
+  "generated card contract preserves saved field order"
+);
+assert.strictEqual(
+  hooks.cardContractSubpageTypeCode("climate"),
+  golden.generatedContract.subpageTypeCodes.climate,
+  "generated contract exposes compact type codes"
+);
 assert.strictEqual(hooks.cardContractSubpageTypeFromCode("H"), "climate", "generated contract exposes compact type decode");
 assert.strictEqual(hooks.cardContractLargeNumbersSupported("sensor", "text"), false, "generated contract blocks text sensor large numbers");
 assert.strictEqual(hooks.cardContractLargeNumbersSupported("weather", "tomorrow"), true, "generated contract allows weather forecast large numbers");
-assert(hooks.cardContractCardKeys().includes("climate"), "generated contract exposes card identities");
+golden.generatedContract.requiredCards.forEach((type) => {
+  assert(hooks.cardContractCardKeys().includes(type), `generated contract exposes ${type || "switch"} card identity`);
+});
 assert.strictEqual(hooks.cardContractCardLabel("media"), "Media", "generated contract exposes card labels");
 assert.strictEqual(hooks.cardContractAllowInSubpage("subpage"), false, "generated contract exposes subpage placement rules");
 assert.deepStrictEqual(Array.from(hooks.cardContractDomains("climate")), ["climate"], "generated contract exposes card domains");
@@ -454,6 +454,13 @@ assert.deepStrictEqual(Object.assign({}, hooks.cardContractMigrationAlias("text_
   type: "sensor",
   precision: "text",
 }, "generated contract exposes legacy text sensor migration alias");
+Object.entries(golden.generatedContract.migrationAliases).forEach(([alias, expected]) => {
+  assert.deepStrictEqual(
+    Object.assign({}, hooks.cardContractMigrationAlias(alias)),
+    expected,
+    `generated contract exposes ${alias} migration alias`
+  );
+});
 assert.strictEqual(hooks.previewHtmlValue({ labelHtml: "" }, "labelHtml", "fallback"), "", "empty preview label suppresses fallback");
 assert.strictEqual(hooks.previewHtmlValue({}, "labelHtml", "fallback"), "fallback", "missing preview label uses fallback");
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "°F", "fahrenheit unit normalization");
@@ -509,7 +516,26 @@ assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 10, 3600), tru
 Object.entries(golden.buttons).forEach(([name, button]) => {
   assertButtonRoundTrip(hooks, `golden ${name}`, button, false);
 });
+Object.entries(golden.oldButtonStrings).forEach(([name, value]) => {
+  if (value.needsMigration === false) {
+    assert.deepStrictEqual(
+      buttonShape(hooks.parseButtonConfig(value.input)),
+      buttonShape(value.expected),
+      `golden old button ${name} parses`
+    );
+  } else {
+    assertButtonMigration(hooks, `golden old button ${name}`, value.input, value.expected);
+  }
+});
 assertSubpageRoundTrip(hooks, "golden subpage", golden.subpage, true);
+Object.entries(golden.compactSubpageStrings).forEach(([name, value]) => {
+  assertSubpageRoundTrip(hooks, `golden compact subpage ${name}`, value.expected, true);
+  assert.deepStrictEqual(
+    subpageShape(hooks.parseSubpageConfig(value.input)),
+    subpageShape(value.expected),
+    `golden compact subpage ${name} parses`
+  );
+});
 const goldenLayout = hooks.importedButtonOrderFor(golden.layoutImport.order, {});
 assert.deepStrictEqual(
   Array.from(goldenLayout.grid.slice(0, golden.layoutImport.expectedGridPrefix.length)),
