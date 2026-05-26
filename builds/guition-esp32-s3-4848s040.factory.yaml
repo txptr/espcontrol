@@ -5,14 +5,17 @@
 # =============================================================================
 
 substitutions:
+  name: "espcontrol-4848s040"
+  friendly_name: "Guition ESP32-S3-4848S040"
   firmware_version: "0.0.0"
   espcontrol_component_url: "file:///config"
   espcontrol_component_ref: "HEAD"
 
 packages:
-  core: !include guition-esp32-s3-4848s040.yaml
+  core: !include ../devices/guition-esp32-s3-4848s040/packages.yaml
 
 esphome:
+  name_add_mac_suffix: true
   project:
     name: jtenniswood.espcontrol
     version: "${firmware_version}"
