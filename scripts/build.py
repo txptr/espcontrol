@@ -529,12 +529,31 @@ def cpp_string_array(name, values):
     return f"inline const char *const {name}[] = {{{quoted}}};\n"
 
 
+def contract_card_option(cards, card_type, option_name):
+    for option in cards[card_type].get("options", []):
+        if option.get("name") == option_name:
+            return option
+    raise KeyError(f"Missing {card_type}.{option_name} option metadata")
+
+
+def contract_card_option_values(cards, card_type, option_name):
+    return contract_card_option(cards, card_type, option_name).get("values", [])
+
+
+def contract_card_option_default(cards, card_type, option_name):
+    return contract_card_option(cards, card_type, option_name).get("defaultValue", "")
+
+
 def gen_card_contract_h(data):
     groups = data["cardGroups"]
     fan = groups["fan"]
     codes = data["subpageTypeCodes"]
     option_actions = data["optionSelect"]["actions"]
     cards = data["cards"]
+    alarm_behavior = cards["alarm"]["behavior"]["alarm"]
+    media_behavior = cards["media"]["behavior"]["media"]
+    climate_behavior = cards["climate"]["behavior"]["climate"]
+    large_numbers = data["largeNumbers"]
     lines = [
         "#pragma once\n",
         "\n",
@@ -546,6 +565,29 @@ def gen_card_contract_h(data):
         f'constexpr const char *CARD_CONTRACT_OPTION_SELECT_ACTION = {json.dumps(data["optionSelect"]["canonicalAction"])};\n',
         cpp_string_array("CARD_CONTRACT_OPTION_SELECT_ACTIONS", option_actions),
         cpp_string_array("CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES", groups["brightnessSlider"]),
+        cpp_string_array("CARD_CONTRACT_COVER_MODES", contract_card_option_values(cards, "cover", "cover_mode")),
+        cpp_string_array("CARD_CONTRACT_GARAGE_MODES", contract_card_option_values(cards, "garage", "garage_mode")),
+        cpp_string_array("CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES", contract_card_option_values(cards, "garage", "label_display")),
+        cpp_string_array("CARD_CONTRACT_INTERNAL_MODES", contract_card_option_values(cards, "internal", "internal_mode")),
+        cpp_string_array("CARD_CONTRACT_LOCK_MODES", contract_card_option_values(cards, "lock", "lock_mode")),
+        cpp_string_array("CARD_CONTRACT_MEDIA_MODES", contract_card_option_values(cards, "media", "media_mode")),
+        cpp_string_array("CARD_CONTRACT_MEDIA_DISPLAY_MODES", contract_card_option_values(cards, "media", "media_display")),
+        cpp_string_array("CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS", contract_card_option_values(cards, "media", "media_now_playing_controls")),
+        cpp_string_array("CARD_CONTRACT_MEDIA_LEGACY_MODES", media_behavior["legacyModes"].keys()),
+        cpp_string_array("CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES", media_behavior["stateDisplayModes"]),
+        cpp_string_array("CARD_CONTRACT_ALARM_ACTION_MODES", [item["value"] for item in alarm_behavior["actions"]]),
+        cpp_string_array("CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES", contract_card_option_values(cards, "alarm", "icon_display")),
+        cpp_string_array("CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES", contract_card_option_values(cards, "alarm", "label_display")),
+        cpp_string_array("CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES", contract_card_option_values(cards, "climate", "label_display")),
+        cpp_string_array("CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES", contract_card_option_values(cards, "climate", "number_display")),
+        cpp_string_array("CARD_CONTRACT_CLIMATE_PRECISION_VALUES", climate_behavior["precisionValues"]),
+        cpp_string_array("CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS", large_numbers["weather"]["precisions"]),
+        f'constexpr const char *CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT = {json.dumps(contract_card_option_default(cards, "garage", "label_display"))};\n',
+        f'constexpr const char *CARD_CONTRACT_MEDIA_DEFAULT_MODE = {json.dumps(media_behavior["defaultMode"])};\n',
+        f'constexpr const char *CARD_CONTRACT_ALARM_ICON_DISPLAY_DEFAULT = {json.dumps(contract_card_option_default(cards, "alarm", "icon_display"))};\n',
+        f'constexpr const char *CARD_CONTRACT_ALARM_LABEL_DISPLAY_DEFAULT = {json.dumps(contract_card_option_default(cards, "alarm", "label_display"))};\n',
+        f'constexpr const char *CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_DEFAULT = {json.dumps(climate_behavior["defaultLabelDisplay"])};\n',
+        f'constexpr const char *CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_DEFAULT = {json.dumps(climate_behavior["defaultNumberDisplay"])};\n',
         "\n",
         "inline bool card_contract_string_in(const std::string &value, const char *const *items, size_t count) {\n",
         "  for (size_t i = 0; i < count; i++) {\n",
@@ -564,8 +606,99 @@ def gen_card_contract_h(data):
         "    sizeof(CARD_CONTRACT_OPTION_SELECT_ACTIONS) / sizeof(CARD_CONTRACT_OPTION_SELECT_ACTIONS[0]));\n",
         "}\n",
         "\n",
-        "inline const char *card_contract_card_label(const std::string &type) {\n",
+        "inline bool card_contract_cover_mode_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_COVER_MODES,\n",
+        "    sizeof(CARD_CONTRACT_COVER_MODES) / sizeof(CARD_CONTRACT_COVER_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_garage_mode_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_GARAGE_MODES,\n",
+        "    sizeof(CARD_CONTRACT_GARAGE_MODES) / sizeof(CARD_CONTRACT_GARAGE_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_garage_label_display_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES,\n",
+        "    sizeof(CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_internal_mode_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_INTERNAL_MODES,\n",
+        "    sizeof(CARD_CONTRACT_INTERNAL_MODES) / sizeof(CARD_CONTRACT_INTERNAL_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_lock_mode_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_LOCK_MODES,\n",
+        "    sizeof(CARD_CONTRACT_LOCK_MODES) / sizeof(CARD_CONTRACT_LOCK_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_media_mode_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_MEDIA_MODES,\n",
+        "    sizeof(CARD_CONTRACT_MEDIA_MODES) / sizeof(CARD_CONTRACT_MEDIA_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_media_legacy_mode(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_MEDIA_LEGACY_MODES,\n",
+        "    sizeof(CARD_CONTRACT_MEDIA_LEGACY_MODES) / sizeof(CARD_CONTRACT_MEDIA_LEGACY_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_media_state_display_mode(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES,\n",
+        "    sizeof(CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES) / sizeof(CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_alarm_action_mode_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_ALARM_ACTION_MODES,\n",
+        "    sizeof(CARD_CONTRACT_ALARM_ACTION_MODES) / sizeof(CARD_CONTRACT_ALARM_ACTION_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_alarm_icon_display_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES,\n",
+        "    sizeof(CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES) / sizeof(CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_alarm_label_display_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES,\n",
+        "    sizeof(CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_climate_label_display_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES,\n",
+        "    sizeof(CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_climate_number_display_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES,\n",
+        "    sizeof(CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES) / sizeof(CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_climate_precision_valid(const std::string &precision) {\n",
+        "  return card_contract_string_in(precision, CARD_CONTRACT_CLIMATE_PRECISION_VALUES,\n",
+        "    sizeof(CARD_CONTRACT_CLIMATE_PRECISION_VALUES) / sizeof(CARD_CONTRACT_CLIMATE_PRECISION_VALUES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_weather_forecast_precision(const std::string &precision) {\n",
+        "  return card_contract_string_in(precision, CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS,\n",
+        "    sizeof(CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS) / sizeof(CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS[0]));\n",
+        "}\n",
+        "\n",
+        "inline const char *card_contract_alarm_action_icon_name(const std::string &mode) {\n",
     ]
+    for action in alarm_behavior["actions"]:
+        lines.append(f'  if (mode == {json.dumps(action["value"])}) return {json.dumps(action["icon"])};\n')
+    lines.extend([
+        "  return \"Alarm\";\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_alarm_action_legacy_icon_name(const std::string &mode, const std::string &icon) {\n",
+    ])
+    for action in alarm_behavior["actions"]:
+        lines.append(f'  if (mode == {json.dumps(action["value"])}) return icon == {json.dumps(action["legacyIcon"])};\n')
+    lines.extend([
+        "  return false;\n",
+        "}\n",
+        "\n",
+        "inline const char *card_contract_card_label(const std::string &type) {\n",
+    ])
     for card_type, card in cards.items():
         lines.append(f'  if (type == {json.dumps(card_type)}) return {json.dumps(card["label"])};\n')
     lines.extend([

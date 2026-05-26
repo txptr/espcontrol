@@ -8,6 +8,29 @@
 constexpr const char *CARD_CONTRACT_OPTION_SELECT_ACTION = "input_select.select_option";
 inline const char *const CARD_CONTRACT_OPTION_SELECT_ACTIONS[] = {"input_select.select_option", "select.select_option"};
 inline const char *const CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES[] = {"slider", "light_brightness", "fan_speed"};
+inline const char *const CARD_CONTRACT_COVER_MODES[] = {"", "tilt", "toggle", "open", "close", "stop", "set_position"};
+inline const char *const CARD_CONTRACT_GARAGE_MODES[] = {"", "open", "close"};
+inline const char *const CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES[] = {"label", "status"};
+inline const char *const CARD_CONTRACT_INTERNAL_MODES[] = {"switch", "push"};
+inline const char *const CARD_CONTRACT_LOCK_MODES[] = {"", "lock", "unlock"};
+inline const char *const CARD_CONTRACT_MEDIA_MODES[] = {"play_pause", "previous", "next", "volume", "position", "now_playing"};
+inline const char *const CARD_CONTRACT_MEDIA_DISPLAY_MODES[] = {"", "state"};
+inline const char *const CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS[] = {"", "progress", "play_pause"};
+inline const char *const CARD_CONTRACT_MEDIA_LEGACY_MODES[] = {"controls"};
+inline const char *const CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES[] = {"play_pause", "position"};
+inline const char *const CARD_CONTRACT_ALARM_ACTION_MODES[] = {"away", "home", "disarm"};
+inline const char *const CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES[] = {"static", "status"};
+inline const char *const CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES[] = {"name", "status"};
+inline const char *const CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES[] = {"label", "status", "actual", "target"};
+inline const char *const CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES[] = {"icon", "actual", "target"};
+inline const char *const CARD_CONTRACT_CLIMATE_PRECISION_VALUES[] = {"", "1", "2", "3"};
+inline const char *const CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS[] = {"today", "tomorrow"};
+constexpr const char *CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT = "label";
+constexpr const char *CARD_CONTRACT_MEDIA_DEFAULT_MODE = "play_pause";
+constexpr const char *CARD_CONTRACT_ALARM_ICON_DISPLAY_DEFAULT = "status";
+constexpr const char *CARD_CONTRACT_ALARM_LABEL_DISPLAY_DEFAULT = "status";
+constexpr const char *CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_DEFAULT = "label";
+constexpr const char *CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_DEFAULT = "target";
 
 inline bool card_contract_string_in(const std::string &value, const char *const *items, size_t count) {
   for (size_t i = 0; i < count; i++) {
@@ -24,6 +47,95 @@ inline bool card_contract_is_brightness_slider_type(const std::string &type) {
 inline bool card_contract_is_option_select_action(const std::string &action) {
   return card_contract_string_in(action, CARD_CONTRACT_OPTION_SELECT_ACTIONS,
     sizeof(CARD_CONTRACT_OPTION_SELECT_ACTIONS) / sizeof(CARD_CONTRACT_OPTION_SELECT_ACTIONS[0]));
+}
+
+inline bool card_contract_cover_mode_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_COVER_MODES,
+    sizeof(CARD_CONTRACT_COVER_MODES) / sizeof(CARD_CONTRACT_COVER_MODES[0]));
+}
+
+inline bool card_contract_garage_mode_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_GARAGE_MODES,
+    sizeof(CARD_CONTRACT_GARAGE_MODES) / sizeof(CARD_CONTRACT_GARAGE_MODES[0]));
+}
+
+inline bool card_contract_garage_label_display_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES,
+    sizeof(CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES[0]));
+}
+
+inline bool card_contract_internal_mode_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_INTERNAL_MODES,
+    sizeof(CARD_CONTRACT_INTERNAL_MODES) / sizeof(CARD_CONTRACT_INTERNAL_MODES[0]));
+}
+
+inline bool card_contract_lock_mode_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_LOCK_MODES,
+    sizeof(CARD_CONTRACT_LOCK_MODES) / sizeof(CARD_CONTRACT_LOCK_MODES[0]));
+}
+
+inline bool card_contract_media_mode_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_MEDIA_MODES,
+    sizeof(CARD_CONTRACT_MEDIA_MODES) / sizeof(CARD_CONTRACT_MEDIA_MODES[0]));
+}
+
+inline bool card_contract_media_legacy_mode(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_MEDIA_LEGACY_MODES,
+    sizeof(CARD_CONTRACT_MEDIA_LEGACY_MODES) / sizeof(CARD_CONTRACT_MEDIA_LEGACY_MODES[0]));
+}
+
+inline bool card_contract_media_state_display_mode(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES,
+    sizeof(CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES) / sizeof(CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES[0]));
+}
+
+inline bool card_contract_alarm_action_mode_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_ALARM_ACTION_MODES,
+    sizeof(CARD_CONTRACT_ALARM_ACTION_MODES) / sizeof(CARD_CONTRACT_ALARM_ACTION_MODES[0]));
+}
+
+inline bool card_contract_alarm_icon_display_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES,
+    sizeof(CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES) / sizeof(CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES[0]));
+}
+
+inline bool card_contract_alarm_label_display_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES,
+    sizeof(CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES[0]));
+}
+
+inline bool card_contract_climate_label_display_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES,
+    sizeof(CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES[0]));
+}
+
+inline bool card_contract_climate_number_display_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES,
+    sizeof(CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES) / sizeof(CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES[0]));
+}
+
+inline bool card_contract_climate_precision_valid(const std::string &precision) {
+  return card_contract_string_in(precision, CARD_CONTRACT_CLIMATE_PRECISION_VALUES,
+    sizeof(CARD_CONTRACT_CLIMATE_PRECISION_VALUES) / sizeof(CARD_CONTRACT_CLIMATE_PRECISION_VALUES[0]));
+}
+
+inline bool card_contract_weather_forecast_precision(const std::string &precision) {
+  return card_contract_string_in(precision, CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS,
+    sizeof(CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS) / sizeof(CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS[0]));
+}
+
+inline const char *card_contract_alarm_action_icon_name(const std::string &mode) {
+  if (mode == "away") return "Shield Lock";
+  if (mode == "home") return "Shield Home";
+  if (mode == "disarm") return "Shield Off";
+  return "Alarm";
+}
+
+inline bool card_contract_alarm_action_legacy_icon_name(const std::string &mode, const std::string &icon) {
+  if (mode == "away") return icon == "Security";
+  if (mode == "home") return icon == "Home";
+  if (mode == "disarm") return icon == "Lock Open";
+  return false;
 }
 
 inline const char *card_contract_card_label(const std::string &type) {
