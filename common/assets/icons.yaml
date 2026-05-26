@@ -23,11 +23,15 @@ font:
       - "\U000F0200"  # mdi-ethernet
       - "\U000F0493"  # mdi-cog
       - "\U000F07D0"  # mdi-home-assistant
+      - "\U000F0996"  # mdi-progress-clock
+      - "\U000F012C"  # mdi-check
 
 substitutions:
   icon_wifi: "\U000F05A9"
   icon_ethernet: "\U000F0200"
   icon_cog: "\U000F0493"
   icon_home_assistant: "\U000F07D0"
+  icon_progress_clock: "\U000F0996"
+  icon_check: "\U000F012C"
   icon_chevron_left: "\U000F0141"
   icon_chevron_right: "\U000F0142"

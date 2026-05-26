@@ -126,13 +126,37 @@ ota:
   - platform: esphome
     on_begin:
       then:
-        - light.turn_off: display_backlight
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
     on_end:
       then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
         - lambda: |-
             esp_sleep_enable_timer_wakeup(100000);
             esp_deep_sleep_start();
+    on_error:
+      then:
+        - script.execute: show_update_failed
   - platform: http_request
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+        - lambda: |-
+            esp_sleep_enable_timer_wakeup(100000);
+            esp_deep_sleep_start();
+    on_error:
+      then:
+        - script.execute: show_update_failed
 
 # ---------------------------------------------------------------------------
 # Shared infrastructure (API, logging, web server, restart button)

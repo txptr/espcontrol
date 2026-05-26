@@ -33,11 +33,13 @@ lvgl:
               pad_row: $setup_loading_pad_row
             widgets:
               - label:
+                  id: loading_status_icon
                   text_font: $setup_icon_font_id
                   text: $icon_ethernet
                   text_color: 0xFFFFFF
                   text_align: center
               - label:
+                  id: loading_status_title
                   text: "Starting up"
                   text_font: $setup_title_font_id
                   text_color: 0xFFFFFF
@@ -68,6 +70,8 @@ esphome:
   on_boot:
     - priority: -200
       then:
+        - lvgl.resume:
+        - lvgl.page.show: loading_page
         - lambda: |-
             lv_obj_add_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
