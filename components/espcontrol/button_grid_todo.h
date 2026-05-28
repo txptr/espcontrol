@@ -500,6 +500,8 @@ inline void request_todo_items(TodoCardCtx *ctx) {
   if (todo_request_state().call_id != 0) {
     ESP_LOGI("todo", "Todo request already pending for %s",
       ctx->entity_id.c_str());
+    ui.waiting_for_ha = true;
+    todo_modal_set_status("Waiting for Home Assistant");
     return;
   }
   if (!ha_api_state_connected()) {
