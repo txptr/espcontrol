@@ -91,6 +91,8 @@ def firmware_todo_request_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: todo.get_items requests must capture a compact response template")
     if "std::string response_template" in body:
         errors.append(f"{rel}: keep the todo response template alive until after the request is sent")
+    if "TODO_RESPONSE_KEY_MAX_LEN" not in text or "TODO_RESPONSE_SUMMARY_MAX_LEN" not in text:
+        errors.append(f"{rel}: bound todo response text before Home Assistant sends it")
     if 'ha_action_add_data(req, "status"' in body:
         errors.append(f"{rel}: filter todo items in the response template, not in action data")
     return errors
@@ -198,6 +200,23 @@ def run_self_test() -> int:
         )
         errors = firmware_todo_request_errors(firmware_dir, root)
         assert any("keep the todo response template alive" in error for error in errors), errors
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_todo.h").write_text(
+            'constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;\n'
+            'inline bool todo_begin_get_items_request() {\n'
+            '  ha_action_begin(req, "todo.get_items", false, 1, call_id);\n'
+            '  req.wants_response = true;\n'
+            '  req.response_template = response_template;\n'
+            '  ha_action_add_entity(req, ctx->entity_id);\n'
+            '  return true;\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        errors = firmware_todo_request_errors(firmware_dir, root)
+        assert any("bound todo response text" in error for error in errors), errors
     print("Firmware Home Assistant binding self-tests passed.")
     return 0
 

@@ -167,11 +167,13 @@ packages:
 # The S3 panel runs close to the internal RAM limit once the RGB display,
 # LVGL, web UI, and API are all active. Keep the native API connection pool
 # small so Home Assistant can connect without reserving memory for unused
-# concurrent clients.
+# concurrent clients. Keep the send queue at the ESP32 default so reconnect
+# bursts and Home Assistant action responses, such as todo list loads, do not
+# drop the API connection on this low-memory panel.
 api:
   listen_backlog: 2
   max_connections: 2
-  max_send_queue: 4
+  max_send_queue: 8
 
 # The 4848S040 USB-C port is exposed as UART0 through a USB-UART bridge.
 # GPIO19/20 are used by the touchscreen/display path, so USB_SERIAL_JTAG

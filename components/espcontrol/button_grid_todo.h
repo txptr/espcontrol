@@ -7,6 +7,8 @@
 constexpr uint32_t TODO_CARD_CTX_MAGIC = 0x544F444F;  // TODO
 constexpr int TODO_MAX_ITEMS = 8;
 constexpr size_t TODO_RESPONSE_TEXT_MAX_LEN = 1536;
+constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;
+constexpr int TODO_RESPONSE_SUMMARY_MAX_LEN = 80;
 
 struct TodoItem {
   std::string key;
@@ -402,6 +404,8 @@ inline std::string todo_items_response_template(const std::string &entity_id) {
     "{% if ns.count < " + std::to_string(TODO_MAX_ITEMS) + " %}"
     "{% set summary = item.summary if item.summary is defined else '' %}"
     "{% set key = item.uid if item.uid is defined and item.uid else summary %}"
+    "{% set key = (key|string)[:" + std::to_string(TODO_RESPONSE_KEY_MAX_LEN) + "] %}"
+    "{% set summary = (summary|string)[:" + std::to_string(TODO_RESPONSE_SUMMARY_MAX_LEN) + "] %}"
     "{% set ns.out = ns.out ~ ('\\n' if ns.out else '') ~ esc(key) ~ '|' ~ esc(summary) %}"
     "{% endif %}"
     "{% set ns.count = ns.count + 1 %}"
