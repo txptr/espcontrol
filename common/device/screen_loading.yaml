@@ -14,7 +14,7 @@ globals:
 lvgl:
   pages:
     - id: loading_page
-      bg_color: 0xFFFFFF
+      bg_color: 0x000000
       scrollable: false
       widgets:
         - obj:
@@ -36,20 +36,20 @@ lvgl:
                   id: loading_status_icon
                   text_font: $setup_icon_font_id
                   text: $icon_wifi_startup
-                  text_color: 0x000000
+                  text_color: 0xFFFFFF
                   text_align: center
               - label:
                   id: loading_status_title
                   text: "Starting up"
                   text_font: $setup_title_font_id
-                  text_color: 0x000000
+                  text_color: 0xFFFFFF
                   width: $content_width
                   text_align: center
               - label:
                   id: loading_status_label
                   text: "Booting"
                   text_font: $setup_body_font_id
-                  text_color: 0x888888
+                  text_color: 0xB0B0B0
                   width: $content_width
                   text_align: center
               # Hidden slider ensures LVGL compiles lv_slider for dynamic use
@@ -63,7 +63,7 @@ lvgl:
                   width: 0
                   height: 0
     - id: screen_off_page
-      bg_color: 0xFFFFFF
+      bg_color: 0x000000
       scrollable: false
 
 esphome:
