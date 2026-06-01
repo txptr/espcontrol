@@ -1045,9 +1045,11 @@ inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj
 }
 
 inline void apply_registered_ha_control_availability(bool available) {
-  for (const auto &ref : ha_control_availability_refs()) {
+  const auto &refs = ha_control_availability_refs();
+  for (const auto &ref : refs) {
     apply_control_availability(ref.visual_obj, ref.input_obj, available, ref.disable_interaction);
   }
+  if (!refs.empty()) notify_dashboard_content_changed();
 }
 
 inline std::string sentence_cap_text(const std::string &state) {

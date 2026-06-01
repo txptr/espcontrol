@@ -218,6 +218,15 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
                 assert "apply_registered_ha_control_availability(false);" in device, (
                     f"{slug}: Home Assistant-backed weather cards must show unavailable on disconnect"
                 )
+                config = (ROOT / "components" / "espcontrol" / "button_grid_config.h").read_text(encoding="utf-8")
+                availability_match = re.search(
+                    r"inline void apply_registered_ha_control_availability\([\s\S]*?\n\}",
+                    config,
+                )
+                assert (
+                    availability_match
+                    and "notify_dashboard_content_changed();" in availability_match.group(0)
+                ), f"{slug}: Home Assistant availability changes must refresh the e-paper display"
                 assert "weather_forecast_cancel_pending_requests();" in device, (
                     f"{slug}: pending forecast callbacks must be cancelled on Home Assistant disconnect"
                 )
