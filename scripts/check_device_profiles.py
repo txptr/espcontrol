@@ -88,7 +88,9 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
         if (profile["firmware"].get("display") or {}).get("mode") == "monochrome":
-            assert "epaper_dashboard_set_config" in sensors, f"{slug}: sensors.yaml missing e-paper dashboard config"
+            assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing shared grid slot count"
+            assert "grid_phase1(slots, cfg," in sensors, f"{slug}: sensors.yaml missing shared grid visual setup"
+            assert "grid_phase2(slots, cfg," in sensors, f"{slug}: sensors.yaml missing shared grid HA bindings"
             assert lvgl_path.is_file(), f"{slug}: LVGL page definition is missing"
             lvgl = lvgl_path.read_text(encoding="utf-8")
             assert "lvgl:" in lvgl, f"{slug}: LVGL page definition missing lvgl root"
@@ -97,7 +99,8 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert "displays: epaper" in device, f"{slug}: device.yaml does not bind LVGL to e-paper display"
             display_block = device.split("display:", 1)[1].split("\nlvgl:", 1)[0]
             assert "lambda: |-" not in display_block, f"{slug}: e-paper display still uses direct drawing lambda"
-            assert "epaper_dashboard_render" not in device, f"{slug}: device.yaml still references direct renderer"
+            assert "espcontrol_epaper" not in device, f"{slug}: device.yaml still uses the separate e-paper renderer"
+            assert "epaper_dashboard_" not in device + sensors, f"{slug}: firmware still references e-paper dashboard helpers"
             if slug == "trmnl-75-og":
                 assert "model: 7.50inv2p\n" in display_block, f"{slug}: display model must support partial refresh"
                 assert "trmnl_start_display_refreshes" in device, f"{slug}: boot must defer the first e-paper refresh"
@@ -117,15 +120,6 @@ def test_setup_icon_glyphs() -> None:
 
 
 def test_trmnl_epaper_icon_literals() -> None:
-    icons = (ROOT / "components" / "espcontrol" / "icons.h").read_text(encoding="utf-8")
-    icon_names = set(re.findall(r'\{"([^"]+)",\s+"\\U[0-9A-Fa-f]+"\}', icons))
-    epaper = (ROOT / "components" / "espcontrol_epaper" / "epaper_dashboard.h").read_text(encoding="utf-8")
-    missing = sorted({
-        name for name in re.findall(r'find_icon\("([^"]+)"\)', epaper)
-        if name != "Auto" and name not in icon_names
-    })
-    assert not missing, f"TRMNL e-paper renderer references missing icon names: {', '.join(missing)}"
-
     glyphs = (ROOT / "common" / "assets" / "icon_glyphs.yaml").read_text(encoding="utf-8")
     trmnl_yaml = "\n".join(
         path.read_text(encoding="utf-8")

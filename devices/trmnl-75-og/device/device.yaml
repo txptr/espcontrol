@@ -17,10 +17,10 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol_epaper]
+    components: [espcontrol]
     refresh: 1s
 
-espcontrol_epaper:
+espcontrol:
 
 esphome:
   name: ${name}
@@ -82,6 +82,7 @@ wifi:
 api:
   reboot_timeout: 0s
   homeassistant_states: true
+  homeassistant_services: true
   on_client_connected:
     - delay: 2s
     - script.execute: trmnl_sync_dashboard_config
@@ -107,6 +108,9 @@ web_server:
     - id: sg_firmware
       name: "Firmware"
       sorting_weight: 40
+
+http_request:
+  verify_ssl: false
 
 button:
   - platform: template
@@ -174,8 +178,7 @@ binary_sensor:
     on_press:
       then:
         - lambda: |-
-            id(trmnl_current_page) = espcontrol::epaper_dashboard_wrap_page(id(trmnl_current_page) - 1);
-            espcontrol::epaper_dashboard_mark_dirty();
+            id(trmnl_current_page) = 0;
         - script.execute: trmnl_refresh_display_full
 
   - platform: gpio
@@ -195,7 +198,6 @@ binary_sensor:
       then:
         - lambda: |-
             id(trmnl_current_page) = 0;
-            espcontrol::epaper_dashboard_mark_dirty();
         - script.execute: trmnl_refresh_display_full
 
   - platform: gpio
@@ -214,8 +216,7 @@ binary_sensor:
     on_press:
       then:
         - lambda: |-
-            id(trmnl_current_page) = espcontrol::epaper_dashboard_wrap_page(id(trmnl_current_page) + 1);
-            espcontrol::epaper_dashboard_mark_dirty();
+            id(trmnl_current_page) = 0;
         - script.execute: trmnl_refresh_display_full
 
 display:

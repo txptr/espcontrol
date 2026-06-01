@@ -1,24 +1,15 @@
 # =============================================================================
 # SENSORS - TRMNL e-paper dashboard config subscriptions
 # =============================================================================
+# Thin wiring layer: builds id()-based arrays and calls the shared button grid
+# renderer used by the other devices. TRMNL keeps only a monochrome e-paper
+# theme and refresh schedule here.
+# =============================================================================
 
 script:
-  - id: trmnl_bind_lvgl_widgets
+  - id: refresh_button_grid
     then:
-      - lambda: |-
-          lv_label_set_text(id(trmnl_wifi_setup_ssid), wifi::global_wifi_component->get_ap().get_ssid().c_str());
-          espcontrol::epaper_dashboard_bind_lvgl_slot(0, id(trmnl_tile_1), id(trmnl_tile_1_icon_label), id(trmnl_tile_1_sensor_container), id(trmnl_tile_1_label), id(trmnl_tile_1_value), id(trmnl_tile_1_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(1, id(trmnl_tile_2), id(trmnl_tile_2_icon_label), id(trmnl_tile_2_sensor_container), id(trmnl_tile_2_label), id(trmnl_tile_2_value), id(trmnl_tile_2_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(2, id(trmnl_tile_3), id(trmnl_tile_3_icon_label), id(trmnl_tile_3_sensor_container), id(trmnl_tile_3_label), id(trmnl_tile_3_value), id(trmnl_tile_3_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(3, id(trmnl_tile_4), id(trmnl_tile_4_icon_label), id(trmnl_tile_4_sensor_container), id(trmnl_tile_4_label), id(trmnl_tile_4_value), id(trmnl_tile_4_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(4, id(trmnl_tile_5), id(trmnl_tile_5_icon_label), id(trmnl_tile_5_sensor_container), id(trmnl_tile_5_label), id(trmnl_tile_5_value), id(trmnl_tile_5_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(5, id(trmnl_tile_6), id(trmnl_tile_6_icon_label), id(trmnl_tile_6_sensor_container), id(trmnl_tile_6_label), id(trmnl_tile_6_value), id(trmnl_tile_6_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(6, id(trmnl_tile_7), id(trmnl_tile_7_icon_label), id(trmnl_tile_7_sensor_container), id(trmnl_tile_7_label), id(trmnl_tile_7_value), id(trmnl_tile_7_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(7, id(trmnl_tile_8), id(trmnl_tile_8_icon_label), id(trmnl_tile_8_sensor_container), id(trmnl_tile_8_label), id(trmnl_tile_8_value), id(trmnl_tile_8_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(8, id(trmnl_tile_9), id(trmnl_tile_9_icon_label), id(trmnl_tile_9_sensor_container), id(trmnl_tile_9_label), id(trmnl_tile_9_value), id(trmnl_tile_9_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(9, id(trmnl_tile_10), id(trmnl_tile_10_icon_label), id(trmnl_tile_10_sensor_container), id(trmnl_tile_10_label), id(trmnl_tile_10_value), id(trmnl_tile_10_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(10, id(trmnl_tile_11), id(trmnl_tile_11_icon_label), id(trmnl_tile_11_sensor_container), id(trmnl_tile_11_label), id(trmnl_tile_11_value), id(trmnl_tile_11_unit));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(11, id(trmnl_tile_12), id(trmnl_tile_12_icon_label), id(trmnl_tile_12_sensor_container), id(trmnl_tile_12_label), id(trmnl_tile_12_value), id(trmnl_tile_12_unit));
+      - script.execute: trmnl_sync_dashboard_config
 
   - id: trmnl_update_clock_bar
     then:
@@ -61,27 +52,100 @@ script:
       - script.execute: trmnl_sync_dashboard_config
       - script.execute: trmnl_refresh_display_when_ready
 
+  - id: trmnl_sync_dashboard_config
+    then:
+      - lambda: |-
+          #define BTN_SLOT(n) { button_##n##_config, button_##n, button_##n##_icon_label, button_##n##_text_label, button_##n##_sensor_container, button_##n##_sensor_label, button_##n##_unit_label, button_##n##_subpage_label }
+          BtnSlot slots[] = {
+            BTN_SLOT(1), BTN_SLOT(2), BTN_SLOT(3), BTN_SLOT(4),
+            BTN_SLOT(5), BTN_SLOT(6), BTN_SLOT(7), BTN_SLOT(8),
+            BTN_SLOT(9), BTN_SLOT(10), BTN_SLOT(11), BTN_SLOT(12),
+          };
+          #undef BTN_SLOT
+
+          GridConfig cfg = {};
+          cfg.num_slots = 12;
+          cfg.cols = 4;
+          cfg.subpage_chevrons_enabled = false;
+          cfg.wrap_tall_labels = true;
+          cfg.icon_font = id(font_trmnl_mdi_26_icons)->get_lv_font();
+          cfg.sp_sensor_font = id(font_trmnl_value_24)->get_lv_font();
+          cfg.sp_large_sensor_font = id(font_trmnl_value_24)->get_lv_font();
+          cfg.large_sensor_unit_offset_percent = -8;
+          cfg.media_title_font = id(font_trmnl_label_14)->get_lv_font();
+          cfg.option_select_value_font = id(font_trmnl_value_24)->get_lv_font();
+          cfg.volume_number_font = id(font_trmnl_value_24)->get_lv_font();
+          cfg.volume_label_font = id(font_trmnl_label_14)->get_lv_font();
+          cfg.climate_card_icon_font = id(font_trmnl_mdi_26_icons)->get_lv_font();
+          cfg.subpage_chevron_font = id(font_trmnl_label_14)->get_lv_font();
+          cfg.climate_option_title_font = id(font_trmnl_label_14)->get_lv_font();
+          cfg.climate_option_value_font = id(font_trmnl_label_14)->get_lv_font();
+          cfg.temperature_unit = "Auto";
+          cfg.timezone = "UTC (GMT+0)";
+
+          grid_phase1(slots, cfg,
+            id(button_order).state,
+            id(button_on_color).state,
+            id(button_off_color).state,
+            id(sensor_card_color).state,
+            id(main_page)->obj);
+          grid_phase2(slots, cfg,
+            nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+            id(button_order).state,
+            id(button_on_color).state,
+            id(button_off_color).state,
+            id(sensor_card_color).state,
+            id(main_page)->obj);
+
+  - id: trmnl_apply_epaper_theme
+    then:
+      - lambda: |-
+          #define BTN_SLOT(n) { button_##n, button_##n##_icon_label, button_##n##_text_label, button_##n##_sensor_label, button_##n##_unit_label, button_##n##_subpage_label }
+          struct ThemeSlot { lv_obj_t *btn; lv_obj_t *icon; lv_obj_t *label; lv_obj_t *value; lv_obj_t *unit; lv_obj_t *subpage; };
+          ThemeSlot slots[] = {
+            BTN_SLOT(1), BTN_SLOT(2), BTN_SLOT(3), BTN_SLOT(4),
+            BTN_SLOT(5), BTN_SLOT(6), BTN_SLOT(7), BTN_SLOT(8),
+            BTN_SLOT(9), BTN_SLOT(10), BTN_SLOT(11), BTN_SLOT(12),
+          };
+          #undef BTN_SLOT
+          lv_color_t page_bg = lv_color_hex(0xFFFFFF);
+          lv_color_t border = lv_color_hex(0x000000);
+          lv_obj_set_style_bg_color(id(main_page)->obj, page_bg, LV_PART_MAIN);
+          lv_obj_set_style_bg_opa(id(main_page)->obj, LV_OPA_COVER, LV_PART_MAIN);
+          for (auto &slot : slots) {
+            if (!slot.btn) continue;
+            bool active = lv_obj_has_state(slot.btn, LV_STATE_CHECKED);
+            lv_color_t bg = lv_color_hex(active ? 0x000000 : 0xFFFFFF);
+            lv_color_t fg = lv_color_hex(active ? 0xFFFFFF : 0x000000);
+            lv_obj_set_style_bg_color(slot.btn, bg, LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(slot.btn, LV_OPA_COVER, LV_PART_MAIN);
+            lv_obj_set_style_border_color(slot.btn, border, LV_PART_MAIN);
+            lv_obj_set_style_border_width(slot.btn, 2, LV_PART_MAIN);
+            lv_obj_set_style_radius(slot.btn, 6, LV_PART_MAIN);
+            lv_obj_set_style_shadow_width(slot.btn, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(slot.btn, 8, LV_PART_MAIN);
+            if (slot.icon) lv_obj_set_style_text_color(slot.icon, fg, LV_PART_MAIN);
+            if (slot.label) lv_obj_set_style_text_color(slot.label, fg, LV_PART_MAIN);
+            if (slot.value) lv_obj_set_style_text_color(slot.value, fg, LV_PART_MAIN);
+            if (slot.unit) lv_obj_set_style_text_color(slot.unit, fg, LV_PART_MAIN);
+            if (slot.subpage) lv_obj_set_style_text_color(slot.subpage, fg, LV_PART_MAIN);
+            lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_invalidate(slot.btn);
+          }
+          lv_obj_set_style_text_color(id(temperatures), lv_color_hex(0x000000), LV_PART_MAIN);
+          lv_obj_set_style_text_color(id(display_time), lv_color_hex(0x000000), LV_PART_MAIN);
+          lv_obj_set_style_text_color(id(network_status_icon_label), lv_color_hex(0x000000), LV_PART_MAIN);
+          lv_obj_set_style_bg_opa(id(network_status_button), LV_OPA_TRANSP, LV_PART_MAIN);
+          lv_obj_set_style_border_width(id(network_status_button), 0, LV_PART_MAIN);
+          lv_obj_invalidate(id(main_page)->obj);
+
   - id: trmnl_refresh_display
     mode: restart
     then:
       - script.execute: trmnl_update_clock_bar
+      - script.execute: trmnl_apply_epaper_theme
       - lambda: |-
           ESP_LOGI("trmnl", "Starting %s e-paper refresh", id(trmnl_force_full_refresh) ? "full" : "partial");
-          bool dark = id(screen_theme).current_option() == "Light";
-          espcontrol::epaper_dashboard_set_dark_theme(dark);
-          lv_color_t bg = lv_color_hex(dark ? 0x000000 : 0xFFFFFF);
-          lv_color_t fg = lv_color_hex(dark ? 0xFFFFFF : 0x000000);
-          lv_obj_set_style_bg_color(id(main_page)->obj, bg, LV_PART_MAIN);
-          lv_obj_set_style_bg_opa(id(main_page)->obj, LV_OPA_COVER, LV_PART_MAIN);
-          lv_obj_set_style_text_color(id(temperatures), fg, LV_PART_MAIN);
-          lv_obj_set_style_text_color(id(display_time), fg, LV_PART_MAIN);
-          lv_obj_set_style_text_color(id(network_status_icon_label), fg, LV_PART_MAIN);
-          lv_obj_set_style_text_opa(id(network_status_icon_label), LV_OPA_COVER, LV_PART_MAIN);
-          lv_obj_set_style_bg_opa(id(network_status_button), LV_OPA_TRANSP, LV_PART_MAIN);
-          lv_obj_set_style_border_width(id(network_status_button), 0, LV_PART_MAIN);
-          lv_obj_invalidate(id(network_status_icon_label));
-          lv_obj_invalidate(id(network_status_button));
-          espcontrol::epaper_dashboard_update_lvgl_page(id(trmnl_current_page));
           if (id(trmnl_force_full_refresh)) {
             id(epaper).set_full_update_every(1);
           } else {
@@ -108,26 +172,6 @@ script:
           id(trmnl_force_full_refresh) = false;
       - script.execute: trmnl_refresh_display
 
-  - id: trmnl_sync_dashboard_config
-    then:
-      - script.execute: trmnl_bind_lvgl_widgets
-      - lambda: |-
-          // BEGIN GENERATED TRMNL DASHBOARD CONFIG
-          // Generated from devices/manifest.json plan: 1 page x 12 slots.
-          espcontrol::epaper_dashboard_set_config(0, id(button_1_config).state);
-          espcontrol::epaper_dashboard_set_config(1, id(button_2_config).state);
-          espcontrol::epaper_dashboard_set_config(2, id(button_3_config).state);
-          espcontrol::epaper_dashboard_set_config(3, id(button_4_config).state);
-          espcontrol::epaper_dashboard_set_config(4, id(button_5_config).state);
-          espcontrol::epaper_dashboard_set_config(5, id(button_6_config).state);
-          espcontrol::epaper_dashboard_set_config(6, id(button_7_config).state);
-          espcontrol::epaper_dashboard_set_config(7, id(button_8_config).state);
-          espcontrol::epaper_dashboard_set_config(8, id(button_9_config).state);
-          espcontrol::epaper_dashboard_set_config(9, id(button_10_config).state);
-          espcontrol::epaper_dashboard_set_config(10, id(button_11_config).state);
-          espcontrol::epaper_dashboard_set_config(11, id(button_12_config).state);
-          // END GENERATED TRMNL DASHBOARD CONFIG
-
 interval:
   - interval: 1min
     then:
@@ -136,22 +180,6 @@ interval:
             lambda: "return id(trmnl_display_refresh_enabled);"
           then:
             - script.execute: trmnl_refresh_display_partial
-
-  - interval: 45s
-    then:
-      - if:
-          condition:
-            lambda: "return id(trmnl_display_refresh_enabled) && espcontrol::epaper_dashboard_is_dirty();"
-          then:
-            - script.execute: trmnl_refresh_display_partial
-
-  - interval: 10s
-    then:
-      - if:
-          condition:
-            lambda: "return id(trmnl_display_refresh_enabled) && espcontrol::epaper_dashboard_dark_theme() != (id(screen_theme).current_option() == \"Light\");"
-          then:
-            - script.execute: trmnl_refresh_display_full
 
   - interval: 30min
     then:

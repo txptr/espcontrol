@@ -1,5 +1,6 @@
-obj:
-  id: trmnl_tile_${num}
+button:
+  id: button_${num}
+  hidden: true
   bg_color: 0xFFFFFF
   bg_opa: cover
   border_color: 0x000000
@@ -11,13 +12,13 @@ obj:
   clickable: false
   widgets:
     - label:
-        id: trmnl_tile_${num}_icon_label
+        id: button_${num}_icon_label
         text: "\U000F0493"
         text_font: font_trmnl_mdi_26_icons
         text_color: 0x000000
         align: top_left
     - obj:
-        id: trmnl_tile_${num}_sensor_container
+        id: button_${num}_sensor_container
         align: top_left
         height: SIZE_CONTENT
         width: SIZE_CONTENT
@@ -33,23 +34,30 @@ obj:
           flex_align_cross: end
         widgets:
           - label:
-              id: trmnl_tile_${num}_value
+              id: button_${num}_sensor_label
               text: ""
               text_font: font_trmnl_value_24
               text_color: 0x000000
               long_mode: dot
           - label:
-              id: trmnl_tile_${num}_unit
+              id: button_${num}_unit_label
               text: ""
               text_font: font_trmnl_label_14
               text_color: 0x000000
               pad_bottom: 6
               hidden: true
     - label:
-        id: trmnl_tile_${num}_label
+        id: button_${num}_text_label
         text: "Configure"
         text_font: font_trmnl_label_14
         text_color: 0x000000
         align: bottom_left
         width: 100%
         long_mode: wrap
+    - label:
+        id: button_${num}_subpage_label
+        text: "\U000F0142"
+        text_font: font_trmnl_label_14
+        text_color: 0x000000
+        align: bottom_right
+        hidden: true
