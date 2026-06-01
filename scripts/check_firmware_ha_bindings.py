@@ -238,6 +238,11 @@ def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]
     if "WEATHER_FORECAST_RETRY_DELAY_MS" not in text or "weather_forecast_schedule_retry" not in text:
         errors.append(f"{rel}: retry failed weather forecast requests later")
     if (
+        "No usable forecast temperatures" in body
+        and 'weather_forecast_schedule_retry(entity_id, day, "no usable forecast temperatures");' not in body
+    ):
+        errors.append(f"{rel}: retry weather forecasts when Home Assistant returns no usable temperatures")
+    if (
         "weather_forecast_error_is_timeout" not in text
         or 'find("timed out")' not in text
         or "apply_weather_forecast_actions_required_for_entity" not in body
@@ -1107,6 +1112,23 @@ def run_self_test() -> int:
         "  }\n"
         "}\n",
         ("retry weather forecast sends that fail after callback registration",),
+    )
+    expect_weather_request_errors(
+        "weather payload without temperatures missing retry",
+        "inline void request_weather_forecast_entity() {\n"
+        "  constexpr int WEATHER_FORECAST_PENDING_MAX = 8;\n"
+        "  constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;\n"
+        "  weather_forecast_track_pending(req.call_id);\n"
+        "  weather_forecast_cancel_pending_requests();\n"
+        "  weather_forecast_schedule_retry(entity_id, day, \"setup failed\");\n"
+        "  if (!ha_api_state_connected()) return;\n"
+        "  ha_register_action_response_callback(req.call_id, cb);\n"
+        "  bool valid = false;\n"
+        "  if (!valid) {\n"
+        "    ESP_LOGW(\"weather_forecast\", \"No usable forecast temperatures for %s\", entity_id.c_str());\n"
+        "  }\n"
+        "}\n",
+        ("retry weather forecasts when Home Assistant returns no usable temperatures",),
     )
     expect_weather_request_errors(
         "unbounded weather callbacks",

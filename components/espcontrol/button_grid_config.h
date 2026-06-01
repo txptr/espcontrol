@@ -1658,6 +1658,7 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
       if (!valid) {
         ESP_LOGW("weather_forecast", "No usable forecast temperatures for %s: %s",
           entity_id.c_str(), payload);
+        weather_forecast_schedule_retry(entity_id, day, "no usable forecast temperatures");
       }
       apply_weather_forecast_to_entity(entity_id, "today", forecast.today_valid,
         forecast.today_high, forecast.today_low, forecast.unit);
