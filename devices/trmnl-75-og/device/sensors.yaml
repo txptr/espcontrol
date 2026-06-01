@@ -52,11 +52,21 @@ script:
           else:
             - script.execute: trmnl_start_display_refreshes
 
+  - id: trmnl_dashboard_config_changed
+    mode: restart
+    then:
+      - lambda: |-
+          ESP_LOGI("trmnl", "Dashboard card config changed; scheduling e-paper refresh");
+      - delay: 3s
+      - script.execute: trmnl_sync_dashboard_config
+      - script.execute: trmnl_refresh_display_when_ready
+
   - id: trmnl_refresh_display
     mode: restart
     then:
       - script.execute: trmnl_update_clock_bar
       - lambda: |-
+          ESP_LOGI("trmnl", "Starting %s e-paper refresh", id(trmnl_force_full_refresh) ? "full" : "partial");
           bool dark = id(screen_theme).current_option() == "Dark";
           espcontrol::epaper_dashboard_set_dark_theme(dark);
           lv_color_t bg = lv_color_hex(dark ? 0x000000 : 0xFFFFFF);
@@ -77,6 +87,7 @@ script:
       - lambda: |-
           id(epaper).set_full_update_every(30);
           id(trmnl_force_full_refresh) = false;
+          ESP_LOGI("trmnl", "Finished e-paper refresh");
 
   - id: trmnl_refresh_display_full
     mode: restart

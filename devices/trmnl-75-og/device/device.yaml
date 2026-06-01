@@ -121,6 +121,20 @@ button:
             global_preferences->sync();
             App.safe_reboot();
 
+  - platform: template
+    name: "Refresh Display"
+    icon: mdi:refresh
+    entity_category: config
+    web_server:
+      sorting_group_id: sg_display
+      sorting_weight: 5
+    on_press:
+      then:
+        - lambda: |-
+            id(trmnl_display_refresh_enabled) = true;
+        - script.execute: trmnl_sync_dashboard_config
+        - script.execute: trmnl_refresh_display_full
+
 time:
   - platform: sntp
     id: trmnl_time

@@ -103,6 +103,9 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
                 assert "trmnl_start_display_refreshes" in device, f"{slug}: boot must defer the first e-paper refresh"
                 assert "trmnl_display_refresh_enabled" in device, f"{slug}: display refresh gate is missing"
                 assert "delay: 75s" in sensors, f"{slug}: first e-paper refresh should wait until services have started"
+                assert 'name: "Refresh Display"' in device, f"{slug}: web UI should expose a manual e-paper refresh"
+                assert "Finished e-paper refresh" in sensors, f"{slug}: display refresh completion log is missing"
+                assert "trmnl_dashboard_config_changed" in sensors, f"{slug}: card config changes must refresh e-paper"
         else:
             assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
 

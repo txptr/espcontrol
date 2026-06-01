@@ -22,3 +22,6 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_button
+    on_value:
+      then:
+        - script.execute: trmnl_dashboard_config_changed
