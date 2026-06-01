@@ -123,6 +123,15 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
                 assert 'set_display_temperature_unit(id(temperature_unit_select).current_option(), "UTC (GMT+0)")' in device, (
                     f"{slug}: temperature unit changes must update the shared display unit helper"
                 )
+                assert "apply_registered_ha_control_availability(true);" in device, (
+                    f"{slug}: Home Assistant-backed weather cards must become available on connect"
+                )
+                assert "apply_registered_ha_control_availability(false);" in device, (
+                    f"{slug}: Home Assistant-backed weather cards must show unavailable on disconnect"
+                )
+                assert "weather_forecast_cancel_pending_requests();" in device, (
+                    f"{slug}: pending forecast callbacks must be cancelled on Home Assistant disconnect"
+                )
         else:
             assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
 
