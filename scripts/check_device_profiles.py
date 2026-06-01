@@ -265,6 +265,9 @@ def test_weather_card_visual_matches_preview() -> None:
     assert 'if (normalized.compare(0, 8, "weather-") == 0) normalized = normalized.substr(8);' in config, (
         "current weather device cards should accept web weather icon names as state aliases"
     )
+    assert 'if (normalized.compare(0, 4, "mdi-") == 0) normalized = normalized.substr(4);' in config, (
+        "current weather device cards should accept web Material Design weather class names as state aliases"
+    )
     assert 'if (normalized == "night") return "clear-night";' in config, (
         "current weather device cards should map the web Weather Night icon name to clear night"
     )
