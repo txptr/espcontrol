@@ -93,6 +93,11 @@
       "mdi": "air-purifier-off"
     },
     {
+      "name": "Airplane",
+      "codepoint": "F001D",
+      "mdi": "airplane"
+    },
+    {
       "name": "Alarm",
       "codepoint": "F009E",
       "mdi": "bell-ring"
