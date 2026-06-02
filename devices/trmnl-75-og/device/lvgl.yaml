@@ -8,7 +8,7 @@ lvgl:
       - label:
           text: "-°C / -°C"
           id: temperatures
-          text_font: font_text_title
+          text_font: font_text_clock_bar
           align: top_left
           x: 12
           y: 6
@@ -17,7 +17,7 @@ lvgl:
       - label:
           text: "--:--"
           id: display_time
-          text_font: font_text_title
+          text_font: font_text_clock_bar
           align: top_mid
           y: 6
           text_align: center

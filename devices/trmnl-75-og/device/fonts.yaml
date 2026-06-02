@@ -77,6 +77,16 @@ font:
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
+  # Clock bar
+  - file: "gfonts://Roboto@Light"
+    id: font_text_clock_bar
+    size: 22
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
   # Now playing track title
   - file: "gfonts://Roboto"
     id: font_text_media_title
