@@ -541,193 +541,185 @@ script:
           id(cover_art_subscribed_entity) = cover_entity;
           ESP_LOGI("cover_art", "Subscribing to artwork entity: %s", cover_entity.c_str());
 
-          ha_subscribe_state(
-            cover_entity,
-            std::function<void(esphome::StringRef)>(
-              [cover_entity](esphome::StringRef state) {
-                if (cover_entity != id(cover_art_media_player_entity).state) return;
-                std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
-                bool playing = state_text == "playing";
-                auto now = id(panel_time).now();
-                if (playing) {
-                  id(cover_art_media_playing) = true;
-                  if (now.is_valid() && id(cover_art_position_anchor_epoch) == 0) {
-                    id(cover_art_last_position_timestamp) = now.timestamp;
-                  }
-                  id(cover_art_playback_started).execute();
-                  return;
+          std::function<void(esphome::StringRef)> handle_playback_state =
+            [cover_entity](esphome::StringRef state) {
+              if (cover_entity != id(cover_art_media_player_entity).state) return;
+              std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+              bool playing = state_text == "playing";
+              auto now = id(panel_time).now();
+              if (playing) {
+                id(cover_art_media_playing) = true;
+                if (now.is_valid() && id(cover_art_position_anchor_epoch) == 0) {
+                  id(cover_art_last_position_timestamp) = now.timestamp;
                 }
+                id(cover_art_playback_started).execute();
+                return;
+              }
 
-                if (state_text == "paused") {
-                  if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
-                  id(cover_art_media_playing) = false;
-                  id(cover_art_position_anchor) = id(cover_art_media_position);
-                  id(cover_art_position_anchor_epoch) = 0;
-                  id(cover_art_last_position_timestamp) = now.is_valid() ? now.timestamp : 0;
-                  id(cover_art_last_progress_percent) = -1;
-                  if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
-                  return;
-                }
-
-                id(cover_art_playback_stopped).execute();
-              })
-          );
-
-          ha_subscribe_attribute(
-            cover_entity, std::string("media_title"),
-            std::function<void(esphome::StringRef)>(
-              [cover_entity](esphome::StringRef title) {
-                if (cover_entity != id(cover_art_media_player_entity).state) return;
-                std::string next = string_ref_limited(title, HA_STATE_TEXT_MAX_LEN);
-                if (next == "unknown" || next == "unavailable") next.clear();
-                bool changed = next != id(cover_art_title);
-                id(cover_art_title) = next;
-                id(cover_art_sync_track_text).execute();
-                if (changed && id(cover_art_screensaver_active)) {
-                  id(cover_art_show_track_overlay).execute();
-                }
-              })
-          );
-
-          ha_subscribe_attribute(
-            cover_entity, std::string("media_artist"),
-            std::function<void(esphome::StringRef)>(
-              [cover_entity](esphome::StringRef artist) {
-                if (cover_entity != id(cover_art_media_player_entity).state) return;
-                std::string next = string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN);
-                if (next == "unknown" || next == "unavailable") next.clear();
-                id(cover_art_artist) = next;
-                id(cover_art_sync_track_text).execute();
-              })
-          );
-
-          ha_subscribe_attribute(
-            cover_entity, std::string("entity_picture"),
-            std::function<void(esphome::StringRef)>(
-              [cover_entity](esphome::StringRef picture) {
-                if (cover_entity != id(cover_art_media_player_entity).state) return;
-                constexpr size_t COVER_ART_URL_MAX_LEN = 1024;
-                std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
-                if (path.empty() || path == "unknown" || path == "unavailable") {
-                  ESP_LOGI("cover_art", "Artwork entity_picture unavailable");
-                  id(cover_art_url).clear();
-                  id(cover_art_show_black_screen).execute();
-                  return;
-                }
-                std::string url = path;
-                if (!(path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0)) {
-                  std::string base = id(cover_art_home_assistant_url).state;
-                  if (base.empty()) base = id(cover_art_home_assistant_base_url);
-                  if (base.empty()) base = "http://192.168.1.31:8123";
-                  while (!base.empty() && base.back() == '/') base.pop_back();
-                  url = base + path;
-                }
-                ESP_LOGI("cover_art", "Artwork entity_picture received (%u chars, url %u chars)",
-                         (unsigned) path.size(), (unsigned) url.size());
-                if (picture.size() > COVER_ART_URL_MAX_LEN) {
-                  ESP_LOGW("cover_art", "Artwork URL exceeded %u chars and was truncated",
-                           (unsigned) COVER_ART_URL_MAX_LEN);
-                }
-                if (path.size() >= HA_TEXT_SENSOR_STATE_MAX_LEN) {
-                  ESP_LOGI("cover_art", "Artwork URL is longer than the normal text-sensor limit");
-                }
-                if (url == id(cover_art_url)) return;
-                id(cover_art_url) = url;
-                id(cover_art_download).execute();
-                if (id(cover_art_screensaver_active)) {
-                  id(cover_art_show_track_overlay).execute();
-                }
-              })
-          );
-
-          ha_subscribe_attribute(
-            cover_entity, std::string("entity_picture_local"),
-            std::function<void(esphome::StringRef)>(
-              [cover_entity](esphome::StringRef picture) {
-                if (cover_entity != id(cover_art_media_player_entity).state) return;
-                constexpr size_t COVER_ART_URL_MAX_LEN = 1024;
-                std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
-                if (path.empty() || path == "unknown" || path == "unavailable") return;
-                std::string url = path;
-                if (!(path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0)) {
-                  std::string base = id(cover_art_home_assistant_url).state;
-                  if (base.empty()) base = id(cover_art_home_assistant_base_url);
-                  if (base.empty()) base = "http://192.168.1.31:8123";
-                  while (!base.empty() && base.back() == '/') base.pop_back();
-                  url = base + path;
-                }
-                ESP_LOGI("cover_art", "Artwork entity_picture_local received (%u chars, url %u chars)",
-                         (unsigned) path.size(), (unsigned) url.size());
-                if (picture.size() > COVER_ART_URL_MAX_LEN) {
-                  ESP_LOGW("cover_art", "Artwork local URL exceeded %u chars and was truncated",
-                           (unsigned) COVER_ART_URL_MAX_LEN);
-                }
-                if (url == id(cover_art_url)) return;
-                id(cover_art_url) = url;
-                id(cover_art_download).execute();
-                if (id(cover_art_screensaver_active)) {
-                  id(cover_art_show_track_overlay).execute();
-                }
-              })
-          );
-
-          ha_subscribe_attribute(
-            cover_entity, std::string("media_duration"),
-            std::function<void(esphome::StringRef)>(
-              [cover_entity](esphome::StringRef duration) {
-                if (cover_entity != id(cover_art_media_player_entity).state) return;
-                std::string value = string_ref_limited(duration, HA_SHORT_STATE_MAX_LEN);
-                id(cover_art_media_duration) = value.empty() ? 0.0f : strtof(value.c_str(), nullptr);
+              if (state_text == "paused") {
+                if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
+                id(cover_art_media_playing) = false;
+                id(cover_art_position_anchor) = id(cover_art_media_position);
+                id(cover_art_position_anchor_epoch) = 0;
+                id(cover_art_last_position_timestamp) = now.is_valid() ? now.timestamp : 0;
                 id(cover_art_last_progress_percent) = -1;
                 if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
-              })
-          );
+                return;
+              }
 
-          ha_subscribe_attribute(
-            cover_entity, std::string("media_position"),
-            std::function<void(esphome::StringRef)>(
-              [cover_entity](esphome::StringRef position) {
-                if (cover_entity != id(cover_art_media_player_entity).state) return;
-                std::string value = string_ref_limited(position, HA_SHORT_STATE_MAX_LEN);
-                float next_position = value.empty() ? 0.0f : strtof(value.c_str(), nullptr);
-                if (next_position < 0.0f) next_position = 0.0f;
-                id(cover_art_position_anchor) = next_position;
-                id(cover_art_media_position) = next_position;
-                auto now = id(panel_time).now();
-                if (id(cover_art_position_anchor_epoch) != 0) {
-                  id(cover_art_last_position_timestamp) = id(cover_art_position_anchor_epoch);
-                } else {
-                  id(cover_art_last_position_timestamp) = now.is_valid() ? now.timestamp : 0;
-                }
-                id(cover_art_last_progress_percent) = -1;
-                if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
-              })
-          );
+              id(cover_art_playback_stopped).execute();
+            };
+          ha_subscribe_state(cover_entity, handle_playback_state);
+          ha_get_state(cover_entity, handle_playback_state);
 
-          ha_subscribe_attribute(
-            cover_entity, std::string("media_position_updated_at"),
-            std::function<void(esphome::StringRef)>(
-              [cover_entity](esphome::StringRef updated_at) {
-                if (cover_entity != id(cover_art_media_player_entity).state) return;
-                std::string value = string_ref_limited(updated_at, HA_STATE_TEXT_MAX_LEN);
-                int yr, mo, dy, hr, mn, sc;
-                if (sscanf(value.c_str(), "%d-%d-%dT%d:%d:%d", &yr, &mo, &dy, &hr, &mn, &sc) != 6 &&
-                    sscanf(value.c_str(), "%d-%d-%d %d:%d:%d", &yr, &mo, &dy, &hr, &mn, &sc) != 6) {
-                  return;
-                }
-                int y = yr;
-                int m = mo;
-                if (m <= 2) {
-                  y--;
-                  m += 12;
-                }
-                long days = 365L * y + y / 4 - y / 100 + y / 400 + (153 * (m - 3) + 2) / 5 + dy - 719469;
-                id(cover_art_position_anchor_epoch) = (int)(days * 86400L + hr * 3600 + mn * 60 + sc);
+          std::function<void(esphome::StringRef)> handle_media_title =
+            [cover_entity](esphome::StringRef title) {
+              if (cover_entity != id(cover_art_media_player_entity).state) return;
+              std::string next = string_ref_limited(title, HA_STATE_TEXT_MAX_LEN);
+              if (next == "unknown" || next == "unavailable") next.clear();
+              bool changed = next != id(cover_art_title);
+              id(cover_art_title) = next;
+              id(cover_art_sync_track_text).execute();
+              if (changed && id(cover_art_screensaver_active)) {
+                id(cover_art_show_track_overlay).execute();
+              }
+            };
+          ha_subscribe_attribute(cover_entity, std::string("media_title"), handle_media_title);
+          ha_get_attribute(cover_entity, std::string("media_title"), handle_media_title);
+
+          std::function<void(esphome::StringRef)> handle_media_artist =
+            [cover_entity](esphome::StringRef artist) {
+              if (cover_entity != id(cover_art_media_player_entity).state) return;
+              std::string next = string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN);
+              if (next == "unknown" || next == "unavailable") next.clear();
+              id(cover_art_artist) = next;
+              id(cover_art_sync_track_text).execute();
+            };
+          ha_subscribe_attribute(cover_entity, std::string("media_artist"), handle_media_artist);
+          ha_get_attribute(cover_entity, std::string("media_artist"), handle_media_artist);
+
+          std::function<void(esphome::StringRef)> handle_entity_picture =
+            [cover_entity](esphome::StringRef picture) {
+              if (cover_entity != id(cover_art_media_player_entity).state) return;
+              constexpr size_t COVER_ART_URL_MAX_LEN = 1024;
+              std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
+              if (path.empty() || path == "unknown" || path == "unavailable") {
+                ESP_LOGI("cover_art", "Artwork entity_picture unavailable");
+                id(cover_art_url).clear();
+                id(cover_art_show_black_screen).execute();
+                return;
+              }
+              std::string url = path;
+              if (!(path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0)) {
+                std::string base = id(cover_art_home_assistant_url).state;
+                if (base.empty()) base = id(cover_art_home_assistant_base_url);
+                if (base.empty()) base = "http://192.168.1.31:8123";
+                while (!base.empty() && base.back() == '/') base.pop_back();
+                url = base + path;
+              }
+              ESP_LOGI("cover_art", "Artwork entity_picture received (%u chars, url %u chars)",
+                       (unsigned) path.size(), (unsigned) url.size());
+              if (picture.size() > COVER_ART_URL_MAX_LEN) {
+                ESP_LOGW("cover_art", "Artwork URL exceeded %u chars and was truncated",
+                         (unsigned) COVER_ART_URL_MAX_LEN);
+              }
+              if (path.size() >= HA_TEXT_SENSOR_STATE_MAX_LEN) {
+                ESP_LOGI("cover_art", "Artwork URL is longer than the normal text-sensor limit");
+              }
+              if (url == id(cover_art_url)) return;
+              id(cover_art_url) = url;
+              id(cover_art_download).execute();
+              if (id(cover_art_screensaver_active)) {
+                id(cover_art_show_track_overlay).execute();
+              }
+            };
+          ha_subscribe_attribute(cover_entity, std::string("entity_picture"), handle_entity_picture);
+          ha_get_attribute(cover_entity, std::string("entity_picture"), handle_entity_picture);
+
+          std::function<void(esphome::StringRef)> handle_entity_picture_local =
+            [cover_entity](esphome::StringRef picture) {
+              if (cover_entity != id(cover_art_media_player_entity).state) return;
+              constexpr size_t COVER_ART_URL_MAX_LEN = 1024;
+              std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
+              if (path.empty() || path == "unknown" || path == "unavailable") return;
+              std::string url = path;
+              if (!(path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0)) {
+                std::string base = id(cover_art_home_assistant_url).state;
+                if (base.empty()) base = id(cover_art_home_assistant_base_url);
+                if (base.empty()) base = "http://192.168.1.31:8123";
+                while (!base.empty() && base.back() == '/') base.pop_back();
+                url = base + path;
+              }
+              ESP_LOGI("cover_art", "Artwork entity_picture_local received (%u chars, url %u chars)",
+                       (unsigned) path.size(), (unsigned) url.size());
+              if (picture.size() > COVER_ART_URL_MAX_LEN) {
+                ESP_LOGW("cover_art", "Artwork local URL exceeded %u chars and was truncated",
+                         (unsigned) COVER_ART_URL_MAX_LEN);
+              }
+              if (url == id(cover_art_url)) return;
+              id(cover_art_url) = url;
+              id(cover_art_download).execute();
+              if (id(cover_art_screensaver_active)) {
+                id(cover_art_show_track_overlay).execute();
+              }
+            };
+          ha_subscribe_attribute(cover_entity, std::string("entity_picture_local"), handle_entity_picture_local);
+          ha_get_attribute(cover_entity, std::string("entity_picture_local"), handle_entity_picture_local);
+
+          std::function<void(esphome::StringRef)> handle_media_duration =
+            [cover_entity](esphome::StringRef duration) {
+              if (cover_entity != id(cover_art_media_player_entity).state) return;
+              std::string value = string_ref_limited(duration, HA_SHORT_STATE_MAX_LEN);
+              id(cover_art_media_duration) = value.empty() ? 0.0f : strtof(value.c_str(), nullptr);
+              id(cover_art_last_progress_percent) = -1;
+              if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
+            };
+          ha_subscribe_attribute(cover_entity, std::string("media_duration"), handle_media_duration);
+          ha_get_attribute(cover_entity, std::string("media_duration"), handle_media_duration);
+
+          std::function<void(esphome::StringRef)> handle_media_position =
+            [cover_entity](esphome::StringRef position) {
+              if (cover_entity != id(cover_art_media_player_entity).state) return;
+              std::string value = string_ref_limited(position, HA_SHORT_STATE_MAX_LEN);
+              float next_position = value.empty() ? 0.0f : strtof(value.c_str(), nullptr);
+              if (next_position < 0.0f) next_position = 0.0f;
+              id(cover_art_position_anchor) = next_position;
+              id(cover_art_media_position) = next_position;
+              auto now = id(panel_time).now();
+              if (id(cover_art_position_anchor_epoch) != 0) {
                 id(cover_art_last_position_timestamp) = id(cover_art_position_anchor_epoch);
-                id(cover_art_last_progress_percent) = -1;
-                if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
-              })
-          );
+              } else {
+                id(cover_art_last_position_timestamp) = now.is_valid() ? now.timestamp : 0;
+              }
+              id(cover_art_last_progress_percent) = -1;
+              if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
+            };
+          ha_subscribe_attribute(cover_entity, std::string("media_position"), handle_media_position);
+          ha_get_attribute(cover_entity, std::string("media_position"), handle_media_position);
+
+          std::function<void(esphome::StringRef)> handle_media_position_updated_at =
+            [cover_entity](esphome::StringRef updated_at) {
+              if (cover_entity != id(cover_art_media_player_entity).state) return;
+              std::string value = string_ref_limited(updated_at, HA_STATE_TEXT_MAX_LEN);
+              int yr, mo, dy, hr, mn, sc;
+              if (sscanf(value.c_str(), "%d-%d-%dT%d:%d:%d", &yr, &mo, &dy, &hr, &mn, &sc) != 6 &&
+                  sscanf(value.c_str(), "%d-%d-%d %d:%d:%d", &yr, &mo, &dy, &hr, &mn, &sc) != 6) {
+                return;
+              }
+              int y = yr;
+              int m = mo;
+              if (m <= 2) {
+                y--;
+                m += 12;
+              }
+              long days = 365L * y + y / 4 - y / 100 + y / 400 + (153 * (m - 3) + 2) / 5 + dy - 719469;
+              id(cover_art_position_anchor_epoch) = (int)(days * 86400L + hr * 3600 + mn * 60 + sc);
+              id(cover_art_last_position_timestamp) = id(cover_art_position_anchor_epoch);
+              id(cover_art_last_progress_percent) = -1;
+              if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
+            };
+          ha_subscribe_attribute(cover_entity, std::string("media_position_updated_at"), handle_media_position_updated_at);
+          ha_get_attribute(cover_entity, std::string("media_position_updated_at"), handle_media_position_updated_at);
 
   - id: cover_art_playback_started
     mode: restart
