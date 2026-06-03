@@ -591,7 +591,8 @@ script:
             std::function<void(esphome::StringRef)>(
               [cover_entity](esphome::StringRef picture) {
                 if (cover_entity != id(cover_art_media_player_entity).state) return;
-                std::string path = string_ref_limited(picture, HA_TEXT_SENSOR_STATE_MAX_LEN);
+                constexpr size_t COVER_ART_URL_MAX_LEN = 1024;
+                std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
                 if (path.empty() || path == "unknown" || path == "unavailable") {
                   ESP_LOGI("cover_art", "Artwork entity_picture unavailable");
                   id(cover_art_url).clear();
@@ -606,7 +607,46 @@ script:
                   while (!base.empty() && base.back() == '/') base.pop_back();
                   url = base + path;
                 }
-                ESP_LOGI("cover_art", "Artwork entity_picture received (%u chars)", (unsigned) path.size());
+                ESP_LOGI("cover_art", "Artwork entity_picture received (%u chars, url %u chars)",
+                         (unsigned) path.size(), (unsigned) url.size());
+                if (picture.size() > COVER_ART_URL_MAX_LEN) {
+                  ESP_LOGW("cover_art", "Artwork URL exceeded %u chars and was truncated",
+                           (unsigned) COVER_ART_URL_MAX_LEN);
+                }
+                if (path.size() >= HA_TEXT_SENSOR_STATE_MAX_LEN) {
+                  ESP_LOGI("cover_art", "Artwork URL is longer than the normal text-sensor limit");
+                }
+                if (url == id(cover_art_url)) return;
+                id(cover_art_url) = url;
+                id(cover_art_download).execute();
+                if (id(cover_art_screensaver_active)) {
+                  id(cover_art_show_track_overlay).execute();
+                }
+              })
+          );
+
+          ha_subscribe_attribute(
+            cover_entity, std::string("entity_picture_local"),
+            std::function<void(esphome::StringRef)>(
+              [cover_entity](esphome::StringRef picture) {
+                if (cover_entity != id(cover_art_media_player_entity).state) return;
+                constexpr size_t COVER_ART_URL_MAX_LEN = 1024;
+                std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
+                if (path.empty() || path == "unknown" || path == "unavailable") return;
+                std::string url = path;
+                if (!(path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0)) {
+                  std::string base = id(cover_art_home_assistant_url).state;
+                  if (base.empty()) base = id(cover_art_home_assistant_base_url);
+                  if (base.empty()) base = "http://192.168.1.31:8123";
+                  while (!base.empty() && base.back() == '/') base.pop_back();
+                  url = base + path;
+                }
+                ESP_LOGI("cover_art", "Artwork entity_picture_local received (%u chars, url %u chars)",
+                         (unsigned) path.size(), (unsigned) url.size());
+                if (picture.size() > COVER_ART_URL_MAX_LEN) {
+                  ESP_LOGW("cover_art", "Artwork local URL exceeded %u chars and was truncated",
+                           (unsigned) COVER_ART_URL_MAX_LEN);
+                }
                 if (url == id(cover_art_url)) return;
                 id(cover_art_url) = url;
                 id(cover_art_download).execute();
