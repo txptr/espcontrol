@@ -893,6 +893,7 @@ var EspControlModel = (() => {
       coverArtDelay: objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
       coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
       coverArtOpenMediaSubpage: !!settings.cover_art_open_media_subpage,
+      coverArtMediaSubpageTarget: String(settings.cover_art_media_subpage_target || ""),
       screensaverAction,
       clockScreensaver: screensaverAction === "clock",
       clockBrightnessDay,

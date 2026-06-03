@@ -367,7 +367,11 @@ script:
                      !id(cover_art_media_subpage_opened);
           then:
             - lambda: |-
-                if (navigation_open_first_kind("media", id(main_page)->obj)) {
+                std::string target = id(cover_art_media_subpage_target).state;
+                bool opened = target.empty()
+                  ? navigation_open_first_kind("media", id(main_page)->obj)
+                  : espcontrol_navigate(target, id(main_page)->obj);
+                if (opened) {
                   id(cover_art_media_subpage_opened) = true;
                 }
       - if:

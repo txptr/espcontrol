@@ -12,6 +12,7 @@ var SSE_ALIAS_GROUPS = {
   coverArtDelay: ["number-screen_saver__cover_art_delay", "number-screen_saver_cover_art_delay", "number-cover_art_delay"],
   trackOverlayDuration: ["number-screen_saver__track_overlay_duration", "number-screen_saver_track_overlay_duration", "number-track_overlay_duration"],
   openMediaSubpage: ["switch-screen_saver__open_media_subpage", "switch-screen_saver_open_media_subpage", "switch-open_media_subpage_while_playing"],
+  mediaSubpageTarget: ["text-screen_saver__media_subpage", "text-screen_saver_media_subpage", "text-cover_art_media_subpage"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
   scheduleWakeBrightness: ["number-screen__schedule_wake_brightness", "number-screen_schedule_wake_brightness", "number-schedule_wake_brightness"],
   scheduleDimmedBrightness: ["number-screen__schedule_dimmed_brightness", "number-screen_schedule_dimmed_brightness", "number-schedule_dimmed_brightness"],
@@ -212,6 +213,10 @@ function connectEvents() {
       state.coverArtTrackOverlayDuration = parseFloat(val) || 0;
       syncCoverArtScreensaverUi();
     },
+    "text-screen_saver__media_subpage": function (val) {
+      state.coverArtMediaSubpageTarget = val || "";
+      syncCoverArtScreensaverUi();
+    },
     "text-screensaver_mode": function (val) {
       state._screensaverModeReceived = true;
       state.screensaverMode = val === "sensor" || val === "timer" || val === "disabled" ? val : "disabled";
@@ -401,6 +406,7 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtDelay, sseHandlers["number-screen_saver__cover_art_delay"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.trackOverlayDuration, sseHandlers["number-screen_saver__track_overlay_duration"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.openMediaSubpage, sseHandlers["switch-screen_saver__open_media_subpage"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.mediaSubpageTarget, sseHandlers["text-screen_saver__media_subpage"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, sseHandlers["number-screen__schedule_wake_timeout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeBrightness, sseHandlers["number-screen__schedule_wake_brightness"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleDimmedBrightness, sseHandlers["number-screen__schedule_dimmed_brightness"]);
@@ -432,6 +438,7 @@ function connectEvents() {
         b.precision = parsed.precision;
         b.options = parsed.options;
         if (migrateConfig) saveButtonConfig(slot);
+        syncCoverArtSubpageOptions();
         scheduleRender();
       },
     },

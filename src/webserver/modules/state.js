@@ -66,6 +66,7 @@ var state = {
   coverArtDelay: 10,
   coverArtTrackOverlayDuration: 5,
   coverArtOpenMediaSubpageOn: false,
+  coverArtMediaSubpageTarget: "",
   screensaverMode: "disabled",
   _screensaverModeReceived: false,
   screensaverAction: "off",

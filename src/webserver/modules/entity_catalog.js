@@ -199,6 +199,15 @@ var ENTITY_CATALOG = {
         "open_media_subpage_while_playing"
       ]
     },
+    "screen_saver_media_subpage": {
+      "domain": "text",
+      "name": "Screen Saver: Media Subpage",
+      "objectIds": [
+        "screen_saver__media_subpage",
+        "screen_saver_media_subpage",
+        "cover_art_media_subpage"
+      ]
+    },
     "screen_saver_daytime_clock_brightness": {
       "domain": "number",
       "name": "Screen Saver: Daytime Clock Brightness",
@@ -467,6 +476,7 @@ var ENTITY_CATALOG = {
       "screen_saver_cover_art_delay",
       "screen_saver_track_overlay_duration",
       "screen_saver_open_media_subpage",
+      "screen_saver_media_subpage",
       "screen_saver_daytime_clock_brightness",
       "screen_saver_nighttime_clock_brightness",
       "screen_saver_clock_brightness",

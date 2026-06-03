@@ -597,12 +597,13 @@ function buildSettingsPage(parent) {
   els.setMediaPlayerSleepPrevention = mediaPlayerInp;
   els.setMediaPlayerSleepPreventionField = mediaPlayerField;
 
+  var coverArtBody = document.createElement("div");
   if (!isEpaperPreview()) {
     var coverArtToggle = toggleRow(
       "Cover Art While Playing",
       "sp-set-ss-cover-art-enable",
       state.coverArtScreensaverOn);
-    timerPanel.appendChild(coverArtToggle.row);
+    coverArtBody.appendChild(coverArtToggle.row);
     coverArtToggle.input.addEventListener("change", function () {
       state.coverArtScreensaverOn = this.checked;
       syncCoverArtScreensaverUi();
@@ -626,20 +627,6 @@ function buildSettingsPage(parent) {
       onBlur: function (value) { state.coverArtMediaPlayerEntity = value; },
     });
     els.setCoverArtMediaPlayer = coverArtEntityInp;
-
-    var coverArtUrlField = document.createElement("div");
-    coverArtUrlField.className = "sp-field";
-    coverArtUrlField.appendChild(fieldLabel("Home Assistant URL", "sp-set-ss-cover-art-ha-url"));
-    var coverArtUrlInp = textInput(
-      "sp-set-ss-cover-art-ha-url",
-      state.coverArtHomeAssistantUrl,
-      "e.g. http://homeassistant.local:8123");
-    coverArtUrlField.appendChild(coverArtUrlInp);
-    coverArtOptions.appendChild(coverArtUrlField);
-    bindTextPost(coverArtUrlInp, entityName("screen_saver_cover_art_ha_url"), {
-      onBlur: function (value) { state.coverArtHomeAssistantUrl = value; },
-    });
-    els.setCoverArtHomeAssistantUrl = coverArtUrlInp;
 
     var coverArtDelayField = document.createElement("div");
     coverArtDelayField.className = "sp-field";
@@ -702,11 +689,28 @@ function buildSettingsPage(parent) {
     coverArtOptions.appendChild(coverArtOpenSubpageToggle.row);
     coverArtOpenSubpageToggle.input.addEventListener("change", function () {
       state.coverArtOpenMediaSubpageOn = this.checked;
+      syncCoverArtScreensaverUi();
       postSwitch(entityName("screen_saver_open_media_subpage"), state.coverArtOpenMediaSubpageOn);
     });
     els.setCoverArtOpenMediaSubpageToggle = coverArtOpenSubpageToggle.input;
+
+    var coverArtSubpageField = document.createElement("div");
+    coverArtSubpageField.className = "sp-field sp-cond-field";
+    coverArtSubpageField.appendChild(fieldLabel("Media Subpage", "sp-set-ss-cover-art-media-subpage"));
+    var coverArtSubpageSelect = document.createElement("select");
+    coverArtSubpageSelect.className = "sp-select";
+    coverArtSubpageSelect.id = "sp-set-ss-cover-art-media-subpage";
+    coverArtSubpageSelect.addEventListener("change", function () {
+      state.coverArtMediaSubpageTarget = this.value || "";
+      postText(entityName("screen_saver_media_subpage"), state.coverArtMediaSubpageTarget);
+    });
+    coverArtSubpageField.appendChild(coverArtSubpageSelect);
+    coverArtOptions.appendChild(coverArtSubpageField);
+    els.setCoverArtMediaSubpageField = coverArtSubpageField;
+    els.setCoverArtMediaSubpage = coverArtSubpageSelect;
+
     els.setCoverArtOptions = coverArtOptions;
-    timerPanel.appendChild(coverArtOptions);
+    coverArtBody.appendChild(coverArtOptions);
   }
 
   ssBody.appendChild(timerPanel);
@@ -812,6 +816,9 @@ function buildSettingsPage(parent) {
   syncIdleUi();
   config.appendChild(makeCollapsibleCard("Idle", idleBody, true, idleBadge));
   config.appendChild(screensaverCard);
+  if (!isEpaperPreview()) {
+    config.appendChild(makeCollapsibleCard("Media Cover Art", coverArtBody, true));
+  }
   config.appendChild(scheduleCard);
 
   var backupBody = document.createElement("div");
@@ -1015,6 +1022,7 @@ function syncMediaPlayerSleepPreventionUi() {
 }
 
 function syncCoverArtScreensaverUi() {
+  syncCoverArtSubpageOptions();
   if (els.setCoverArtToggle) {
     els.setCoverArtToggle.checked = !!state.coverArtScreensaverOn;
   }
@@ -1034,6 +1042,44 @@ function syncCoverArtScreensaverUi() {
   if (els.setCoverArtOpenMediaSubpageToggle) {
     els.setCoverArtOpenMediaSubpageToggle.checked = !!state.coverArtOpenMediaSubpageOn;
   }
+  if (els.setCoverArtMediaSubpageField) {
+    els.setCoverArtMediaSubpageField.classList.toggle("sp-visible", !!state.coverArtOpenMediaSubpageOn);
+  }
+}
+
+function syncCoverArtSubpageOptions() {
+  if (!els.setCoverArtMediaSubpage) return;
+
+  var select = els.setCoverArtMediaSubpage;
+  var current = state.coverArtMediaSubpageTarget || "";
+  select.innerHTML = "";
+
+  var placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "First media subpage";
+  select.appendChild(placeholder);
+
+  var foundCurrent = current === "";
+  for (var i = 0; i < state.buttons.length; i++) {
+    var b = state.buttons[i] || {};
+    if (b.type !== "subpage") continue;
+    var slot = i + 1;
+    var label = (b.label || "").trim() || ("Subpage " + slot);
+    var opt = document.createElement("option");
+    opt.value = "slot:" + slot;
+    opt.textContent = label + " (Slot " + slot + ")";
+    if (opt.value === current) foundCurrent = true;
+    select.appendChild(opt);
+  }
+
+  if (current && !foundCurrent) {
+    var saved = document.createElement("option");
+    saved.value = current;
+    saved.textContent = current + " (saved)";
+    select.appendChild(saved);
+  }
+
+  select.value = current && foundCurrent ? current : "";
 }
 
 function syncOptionalClockBrightness(field, previousField, display) {
