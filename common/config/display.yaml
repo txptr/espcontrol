@@ -268,9 +268,10 @@ switch:
     web_server:
       sorting_group_id: sg_screensaver
     on_turn_on:
+      - script.execute: cover_art_resubscribe
       - script.execute: cover_art_playback_refresh
     on_turn_off:
-      - script.execute: cover_art_playback_stopped
+      - script.execute: cover_art_disable
 
   - platform: template
     name: "${entity_screen_saver_open_media_subpage}"
