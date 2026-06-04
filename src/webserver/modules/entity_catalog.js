@@ -81,6 +81,15 @@ var ENTITY_CATALOG = {
         "clock_bar_enabled"
       ]
     },
+    "screen_clock_bar_layout": {
+      "domain": "text",
+      "name": "Screen: Clock Bar Layout",
+      "objectIds": [
+        "screen__clock_bar_layout",
+        "screen_clock_bar_layout",
+        "clock_bar_layout"
+      ]
+    },
     "screen_clock_bar_time": {
       "domain": "switch",
       "name": "Screen: Clock Bar Time",
@@ -481,6 +490,7 @@ var ENTITY_CATALOG = {
       "indoor_temp_enable",
       "outdoor_temp_enable",
       "screen_clock_bar",
+      "screen_clock_bar_layout",
       "screen_clock_bar_time",
       "screen_network_status_icon",
       "screen_temperature_degree_symbol",

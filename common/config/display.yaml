@@ -33,6 +33,19 @@ script:
           bool visible = enabled && !fullscreen_screensaver_active;
           bool show_time = visible && id(clock_bar_time_enabled).state;
           bool show_network = visible && id(network_status_enabled).state;
+          int clock_bar_label_y = ${main_page_pad_top} / 5;
+          int clock_bar_gap = ${screen_width} / 8;
+          if (clock_bar_gap < 92) clock_bar_gap = 92;
+          if (clock_bar_gap > 120) clock_bar_gap = 120;
+          apply_clock_bar_layout(id(clock_bar_layout).state,
+                                 id(temperatures),
+                                 id(display_time),
+                                 id(network_status_button),
+                                 ${screen_width} >= 700 ? 12 : 8,
+                                 clock_bar_label_y,
+                                 ${screen_width} >= 700 ? 20 : 16,
+                                 clock_bar_label_y > 7 ? clock_bar_label_y - 7 : 1,
+                                 clock_bar_gap);
           lv_obj_set_style_pad_top(
             id(main_page)->obj,
             visible ? ${main_page_pad_top} : ${main_page_compact_pad_top},
@@ -391,6 +404,25 @@ select:
                                       id(indoor_temp), id(outdoor_temp));
 
 text:
+  - platform: template
+    name: "${entity_screen_clock_bar_layout}"
+    internal: true
+    id: clock_bar_layout
+    optimistic: true
+    restore_value: true
+    initial_value: "left:temperature|middle:time|right:network"
+    min_length: 0
+    max_length: 80
+    mode: text
+    entity_category: config
+    icon: "mdi:format-align-justify"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
+        - script.execute: clock_bar_apply
+
   - platform: template
     name: "${entity_indoor_temp_entity}"
     internal: true

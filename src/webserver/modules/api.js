@@ -326,6 +326,10 @@ function postText(name, value) {
   return post(entityPostUrls("text", name, [], "set?value=" + encodedValue));
 }
 
+function postTextWithObjectIds(name, objectIds, value, errorMessage) {
+  return postWithObjectIds("text", name, objectIds, "set?value=" + encodeURIComponent(value), errorMessage);
+}
+
 function saveButtonConfig(slot) {
   var b = state.buttons[slot - 1];
   postText(entityNameForSlot("button_config", slot), serializeButtonConfig(b));
@@ -586,6 +590,15 @@ var CLOCK_BAR_UNAVAILABLE =
 
 function postClockBar(on) {
   postSwitchWithObjectIds(entityName("screen_clock_bar"), entityObjectIds("screen_clock_bar"), on, CLOCK_BAR_UNAVAILABLE);
+}
+
+function postClockBarLayout(value) {
+  postTextWithObjectIds(
+    entityName("screen_clock_bar_layout"),
+    entityObjectIds("screen_clock_bar_layout"),
+    value,
+    CLOCK_BAR_UNAVAILABLE
+  );
 }
 
 var CLOCK_BAR_TIME_UNAVAILABLE =

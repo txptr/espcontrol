@@ -142,6 +142,7 @@ var state = {
   developerExperimentalFeatures: false,
   configLocked: false,
   configLockReason: "",
+  clockBarLayout: null,
   clockBarSelectedItem: "",
   clockBarDragItem: "",
   clockBarTempRestoreIndoor: false,

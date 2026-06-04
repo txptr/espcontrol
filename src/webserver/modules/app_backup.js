@@ -21,6 +21,7 @@ function exportConfig() {
       outdoor_temp_entity: state.outdoorEntity,
       temperature_unit: normalizeTemperatureUnit(state.temperatureUnit),
       clock_bar: state.clockBarOn,
+      clock_bar_layout: serializeClockBarLayout(state.clockBarLayout),
       clock_bar_time: state.clockBarTimeOn,
       network_status_icon: state.networkStatusOn,
       temperature_degree_symbol: state.temperatureDegreeSymbolOn,
@@ -161,6 +162,7 @@ function importConfig() {
         var importedSettings = EspControlModel.normalizeBackupPanelSettings(s, {
           timezone: state.timezone,
           language: state.language,
+          clockBarLayout: serializeClockBarLayout(state.clockBarLayout),
           clockFormat: state.clockFormat,
           clockFormatOptions: state.clockFormatOptions,
           developerExperimentalFeatures: state.developerExperimentalFeatures,
@@ -176,6 +178,8 @@ function importConfig() {
         postText(entityName("indoor_temp_entity"), importedSettings.indoorTempEntity);
         postText(entityName("outdoor_temp_entity"), importedSettings.outdoorTempEntity);
         postClockBar(importedSettings.clockBar);
+        applyClockBarLayoutValue(importedSettings.clockBarLayout);
+        postClockBarLayout(importedSettings.clockBarLayout);
         postClockBarTime(importedSettings.clockBarTime);
         postNetworkStatusIcon(importedSettings.networkStatusIcon);
         postTemperatureDegreeSymbol(importedSettings.temperatureDegreeSymbol);

@@ -172,6 +172,7 @@ export function normalizeBackupScreenSettings(
 export interface BackupPanelSettingsCurrent {
   timezone: string;
   language: string;
+  clockBarLayout: string;
   clockFormat: string;
   clockFormatOptions: readonly string[];
   developerExperimentalFeatures: boolean;
@@ -188,6 +189,7 @@ export interface BackupPanelSettingsState {
   indoorTempEntity: string;
   outdoorTempEntity: string;
   clockBar: boolean;
+  clockBarLayout: string;
   clockBarTime: boolean;
   networkStatusIcon: boolean;
   temperatureDegreeSymbol: boolean;
@@ -266,6 +268,7 @@ export function normalizeBackupPanelSettings(
     indoorTempEntity: String(settings.indoor_temp_entity || ""),
     outdoorTempEntity: String(settings.outdoor_temp_entity || ""),
     clockBar: objectValue(settings, "clock_bar") != null ? !!settings.clock_bar : false,
+    clockBarLayout: String(settings.clock_bar_layout || current.clockBarLayout),
     clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
     networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
     temperatureDegreeSymbol: objectValue(settings, "temperature_degree_symbol") != null

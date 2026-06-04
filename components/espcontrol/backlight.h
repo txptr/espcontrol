@@ -9,6 +9,7 @@
 #include <string>
 #include <cstdio>
 #include <cmath>
+#include <cstring>
 #include "esphome/components/lvgl/lvgl_esphome.h"
 #include "sun_calc.h"
 #include "temperature_unit.h"
@@ -250,6 +251,136 @@ inline void refresh_temp_label_values(lv_obj_t *label, lv_obj_t *main_page_obj,
     format_clock_bar_temperature_single(buf, sizeof(buf), indoor_buf);
   }
   lv_label_set_text(label, buf);
+}
+
+// ── Clock bar layout helpers ────────────────────────────────────────
+
+enum ClockBarItemId {
+  CLOCK_BAR_ITEM_TEMPERATURE = 0,
+  CLOCK_BAR_ITEM_TIME = 1,
+  CLOCK_BAR_ITEM_NETWORK = 2,
+  CLOCK_BAR_ITEM_COUNT = 3,
+};
+
+enum ClockBarSectionId {
+  CLOCK_BAR_SECTION_LEFT = 0,
+  CLOCK_BAR_SECTION_MIDDLE = 1,
+  CLOCK_BAR_SECTION_RIGHT = 2,
+  CLOCK_BAR_SECTION_COUNT = 3,
+};
+
+struct ClockBarParsedLayout {
+  int section[CLOCK_BAR_ITEM_COUNT];
+  int order[CLOCK_BAR_ITEM_COUNT];
+  int count[CLOCK_BAR_SECTION_COUNT];
+};
+
+inline bool clock_bar_token_matches(const char *start, size_t len, const char *value) {
+  size_t value_len = strlen(value);
+  return len == value_len && strncmp(start, value, len) == 0;
+}
+
+inline int clock_bar_section_id(const char *start, size_t len) {
+  if (clock_bar_token_matches(start, len, "left")) return CLOCK_BAR_SECTION_LEFT;
+  if (clock_bar_token_matches(start, len, "middle")) return CLOCK_BAR_SECTION_MIDDLE;
+  if (clock_bar_token_matches(start, len, "right")) return CLOCK_BAR_SECTION_RIGHT;
+  return -1;
+}
+
+inline int clock_bar_item_id(const char *start, size_t len) {
+  if (clock_bar_token_matches(start, len, "temperature")) return CLOCK_BAR_ITEM_TEMPERATURE;
+  if (clock_bar_token_matches(start, len, "time")) return CLOCK_BAR_ITEM_TIME;
+  if (clock_bar_token_matches(start, len, "network")) return CLOCK_BAR_ITEM_NETWORK;
+  return -1;
+}
+
+inline void clock_bar_add_item(ClockBarParsedLayout &layout, int section, int item) {
+  if (section < 0 || section >= CLOCK_BAR_SECTION_COUNT ||
+      item < 0 || item >= CLOCK_BAR_ITEM_COUNT ||
+      layout.section[item] >= 0) {
+    return;
+  }
+  layout.section[item] = section;
+  layout.order[item] = layout.count[section]++;
+}
+
+inline ClockBarParsedLayout parse_clock_bar_layout(const std::string &layout_text) {
+  ClockBarParsedLayout layout;
+  for (int i = 0; i < CLOCK_BAR_ITEM_COUNT; i++) {
+    layout.section[i] = -1;
+    layout.order[i] = 0;
+  }
+  for (int i = 0; i < CLOCK_BAR_SECTION_COUNT; i++) layout.count[i] = 0;
+
+  const char *text = layout_text.c_str();
+  const size_t size = layout_text.size();
+  size_t segment_start = 0;
+
+  while (segment_start <= size) {
+    size_t segment_end = segment_start;
+    while (segment_end < size && text[segment_end] != '|') segment_end++;
+
+    size_t colon = segment_start;
+    while (colon < segment_end && text[colon] != ':') colon++;
+    if (colon < segment_end) {
+      int section = clock_bar_section_id(text + segment_start, colon - segment_start);
+      size_t item_start = colon + 1;
+      while (section >= 0 && item_start <= segment_end) {
+        size_t item_end = item_start;
+        while (item_end < segment_end && text[item_end] != ',') item_end++;
+        int item = clock_bar_item_id(text + item_start, item_end - item_start);
+        clock_bar_add_item(layout, section, item);
+        item_start = item_end + 1;
+      }
+    }
+
+    if (segment_end == size) break;
+    segment_start = segment_end + 1;
+  }
+
+  clock_bar_add_item(layout, CLOCK_BAR_SECTION_LEFT, CLOCK_BAR_ITEM_TEMPERATURE);
+  clock_bar_add_item(layout, CLOCK_BAR_SECTION_MIDDLE, CLOCK_BAR_ITEM_TIME);
+  clock_bar_add_item(layout, CLOCK_BAR_SECTION_RIGHT, CLOCK_BAR_ITEM_NETWORK);
+  return layout;
+}
+
+inline void align_clock_bar_widget(lv_obj_t *obj, int section, int order, int count,
+                                   int left_x, int y, int right_x, int item_gap) {
+  if (!obj) return;
+  if (section == CLOCK_BAR_SECTION_LEFT) {
+    lv_obj_align(obj, LV_ALIGN_TOP_LEFT, left_x + order * item_gap, y);
+  } else if (section == CLOCK_BAR_SECTION_MIDDLE) {
+    int x = ((order * 2) - (count - 1)) * item_gap / 2;
+    lv_obj_align(obj, LV_ALIGN_TOP_MID, x, y);
+  } else {
+    int x = -(right_x + (count - 1 - order) * item_gap);
+    lv_obj_align(obj, LV_ALIGN_TOP_RIGHT, x, y);
+  }
+}
+
+inline void apply_clock_bar_layout(const std::string &layout_text,
+                                   lv_obj_t *temperatures,
+                                   lv_obj_t *display_time,
+                                   lv_obj_t *network_status_button,
+                                   int left_x, int label_y,
+                                   int right_x, int network_y,
+                                   int item_gap) {
+  ClockBarParsedLayout layout = parse_clock_bar_layout(layout_text);
+  align_clock_bar_widget(temperatures,
+                         layout.section[CLOCK_BAR_ITEM_TEMPERATURE],
+                         layout.order[CLOCK_BAR_ITEM_TEMPERATURE],
+                         layout.count[layout.section[CLOCK_BAR_ITEM_TEMPERATURE]],
+                         left_x, label_y, right_x, item_gap);
+  align_clock_bar_widget(display_time,
+                         layout.section[CLOCK_BAR_ITEM_TIME],
+                         layout.order[CLOCK_BAR_ITEM_TIME],
+                         layout.count[layout.section[CLOCK_BAR_ITEM_TIME]],
+                         left_x, label_y, right_x, item_gap);
+  align_clock_bar_widget(network_status_button,
+                         layout.section[CLOCK_BAR_ITEM_NETWORK],
+                         layout.order[CLOCK_BAR_ITEM_NETWORK],
+                         layout.count[layout.section[CLOCK_BAR_ITEM_NETWORK]],
+                         left_x, network_y, right_x, item_gap);
 }
 
 // ── Screensaver layout helpers ──────────────────────────────────────
