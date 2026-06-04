@@ -24,6 +24,12 @@ globals:
   - id: cover_art_pending_local_url
     type: std::string
     initial_value: '""'
+  - id: cover_art_cached_remote_url
+    type: std::string
+    initial_value: '""'
+  - id: cover_art_cached_local_url
+    type: std::string
+    initial_value: '""'
   - id: cover_art_request_id
     type: int
     initial_value: '0'
@@ -655,6 +661,8 @@ script:
           id(cover_art_url).clear();
           id(cover_art_pending_remote_url).clear();
           id(cover_art_pending_local_url).clear();
+          id(cover_art_cached_remote_url).clear();
+          id(cover_art_cached_local_url).clear();
           id(cover_art_artwork_pending_count) = 0;
           id(cover_art_request_id)++;
           id(cover_art_loaded_url).clear();
@@ -729,6 +737,50 @@ script:
                        id(cover_art_retry_count) < 5));
           then:
             - script.execute: cover_art_request_artwork
+
+  - id: cover_art_use_cached_artwork
+    mode: restart
+    then:
+      - lambda: |-
+          std::string chosen = id(cover_art_cached_local_url);
+          std::string alternate;
+          if (chosen.empty()) {
+            chosen = id(cover_art_cached_remote_url);
+          } else if (!id(cover_art_cached_remote_url).empty() &&
+                     id(cover_art_cached_remote_url) != chosen) {
+            alternate = id(cover_art_cached_remote_url);
+          }
+
+          if (chosen.empty()) return;
+
+          std::string fallback;
+          std::string capped = esphome::artwork_image::cap_artwork_url(chosen, ${cover_art_size});
+          if (capped != chosen) {
+            fallback = chosen;
+            chosen = capped;
+          }
+          if (fallback.empty() && !alternate.empty()) {
+            fallback = esphome::artwork_image::cap_artwork_url(alternate, ${cover_art_size});
+            if (fallback == chosen) fallback.clear();
+          }
+
+          id(cover_art_fallback_url) = fallback;
+          if (chosen == id(cover_art_url)) {
+            if (id(cover_art_screensaver_active) && !id(cover_art_image_available)) {
+              id(cover_art_deferred_download).execute();
+            }
+            return;
+          }
+
+          ESP_LOGI("cover_art", "Using cached artwork URL (%u chars)", (unsigned) chosen.size());
+          id(cover_art_url) = chosen;
+          id(cover_art_retry_url).clear();
+          id(cover_art_retry_count) = 0;
+          id(cover_art_image_available) = false;
+          if (id(cover_art_screensaver_active)) {
+            id(cover_art_deferred_download).execute();
+            id(cover_art_show_track_overlay).execute();
+          }
 
   - id: cover_art_prepare_download
     mode: restart
@@ -926,6 +978,7 @@ script:
       - lvgl.widget.show: cover_art_screensaver
       - script.execute: cover_art_apply_responsive_layout
       - script.execute: cover_art_show_track_overlay
+      - script.execute: cover_art_use_cached_artwork
       - script.execute: cover_art_request_artwork
       - script.execute: cover_art_prepare_download
       - script.execute: cover_art_deferred_request_artwork
@@ -1232,7 +1285,6 @@ script:
                 id(cover_art_show_track_overlay).execute();
                 id(cover_art_request_artwork).execute();
               } else {
-                id(cover_art_url).clear();
                 id(cover_art_retry_url).clear();
                 id(cover_art_retry_count) = 0;
                 id(cover_art_image_available) = false;
@@ -1254,19 +1306,72 @@ script:
           if (!already_subscribed) ha_subscribe_attribute(cover_entity, std::string("media_artist"), handle_media_artist);
           ha_get_attribute(cover_entity, std::string("media_artist"), handle_media_artist);
 
-          std::function<void(esphome::StringRef)> handle_picture_change =
-            [cover_entity](esphome::StringRef picture) {
+          auto handle_picture_change =
+            [cover_entity](esphome::StringRef picture, bool local) {
               if (!id(cover_art_screensaver_enabled).state ||
-                  cover_entity != id(cover_art_media_player_entity).state ||
-                  !id(cover_art_screensaver_active)) return;
-              ESP_LOGD("cover_art", "Artwork attribute changed while active (%u chars)",
-                       (unsigned) picture.size());
-              id(cover_art_request_artwork).execute();
+                  cover_entity != id(cover_art_media_player_entity).state) return;
+
+              constexpr size_t COVER_ART_URL_MAX_LEN = 4096;
+              std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
+              std::string url;
+              if (!path.empty() && path != "unknown" && path != "unavailable") {
+                if (path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0) {
+                  url = path;
+                } else {
+                  std::string base = id(cover_art_home_assistant_url).state;
+                  if (base.empty()) base = id(cover_art_home_assistant_base_url);
+                  if (base.empty()) base = "http://192.168.1.31:8123";
+                  while (!base.empty() && base.back() == '/') base.pop_back();
+                  url = base + path;
+                }
+              }
+
+              std::string &cached = local ? id(cover_art_cached_local_url) : id(cover_art_cached_remote_url);
+              if (cached == url) return;
+              cached = url;
+              ESP_LOGD("cover_art", "Cached artwork %s (%u chars, url %u chars)",
+                       local ? "entity_picture_local" : "entity_picture",
+                       (unsigned) path.size(), (unsigned) url.size());
+
+              if (id(cover_art_screensaver_active)) {
+                id(cover_art_use_cached_artwork).execute();
+                id(cover_art_request_artwork).execute();
+              }
             };
           if (!already_subscribed) {
-            ha_subscribe_attribute(cover_entity, std::string("entity_picture"), handle_picture_change);
-            ha_subscribe_attribute(cover_entity, std::string("entity_picture_local"), handle_picture_change);
+            ha_subscribe_attribute(
+              cover_entity,
+              std::string("entity_picture"),
+              std::function<void(esphome::StringRef)>(
+                [handle_picture_change](esphome::StringRef picture) {
+                  handle_picture_change(picture, false);
+                })
+            );
+            ha_subscribe_attribute(
+              cover_entity,
+              std::string("entity_picture_local"),
+              std::function<void(esphome::StringRef)>(
+                [handle_picture_change](esphome::StringRef picture) {
+                  handle_picture_change(picture, true);
+                })
+            );
           }
+          ha_get_attribute(
+            cover_entity,
+            std::string("entity_picture"),
+            std::function<void(esphome::StringRef)>(
+              [handle_picture_change](esphome::StringRef picture) {
+                handle_picture_change(picture, false);
+              })
+          );
+          ha_get_attribute(
+            cover_entity,
+            std::string("entity_picture_local"),
+            std::function<void(esphome::StringRef)>(
+              [handle_picture_change](esphome::StringRef picture) {
+                handle_picture_change(picture, true);
+              })
+          );
 
           std::function<void(esphome::StringRef)> handle_media_duration =
             [cover_entity](esphome::StringRef duration) {
