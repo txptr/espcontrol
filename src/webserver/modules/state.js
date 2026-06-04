@@ -6,8 +6,20 @@ var MONTH_NAME_DEFAULTS = [
   "July", "August", "September", "October", "November", "December"
 ];
 var LANGUAGE_LABELS = {
+  cs: "Čeština",
+  da: "Dansk",
+  de: "Deutsch",
   en: "English",
-  it: "Italiano"
+  es: "Español",
+  fr: "Français",
+  it: "Italiano",
+  nb: "Norsk bokmål",
+  nl: "Nederlands",
+  pl: "Polski",
+  pt: "Português",
+  "pt-br": "Português (Brasil)",
+  sk: "Slovenčina",
+  sv: "Svenska"
 };
 var THEME_PRESETS = {
   Light: { on: "0073FF", off: "CECECE", sensor: "DEDEDE" },
@@ -102,7 +114,7 @@ var state = {
   timezone: "UTC (GMT+0)",
   timezoneOptions: defaultTimezoneOptions(),
   language: "en",
-  languageOptions: ["en", "it"],
+  languageOptions: ["en", "cs", "da", "de", "es", "fr", "it", "nb", "nl", "pl", "pt", "pt-br", "sk", "sv"],
   clockFormat: "24h",
   clockFormatOptions: ["12h", "24h"],
   customNtpServers: false,

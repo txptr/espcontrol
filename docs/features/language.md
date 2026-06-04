@@ -9,11 +9,11 @@ Open the panel web page, go to **Settings**, then choose **Language**.
 
 The language setting is stored on the device as the Home Assistant select entity **Screen: Language**. It is also included when you export a backup from the panel setup page.
 
-The selector shows languages that are included in the firmware. English and Italian are included.
+The selector shows languages that are included in the firmware. English, Czech, Danish, German, Spanish, French, Italian, Norwegian Bokmål, Dutch, Polish, Portuguese, Brazilian Portuguese, Slovak, and Swedish are included.
 
 ## Translation Files
 
-Panel strings are kept in `common/config/strings.en.txt`. Italian strings are in `common/config/strings.it.txt`.
+Panel strings are kept in `common/config/strings.en.txt`. Each translated language has a matching `common/config/strings.<language-code>.txt` file.
 
 To contribute another language:
 
