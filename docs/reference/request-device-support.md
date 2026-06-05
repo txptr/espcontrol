@@ -1,10 +1,10 @@
 ---
-title: Request Device Support
+title: Added Device Support
 description:
   How to collect Home Assistant state information when asking EspControl to support a new device type.
 ---
 
-# Request Device Support
+# Added Device Support
 
 EspControl can only support a new device type properly when we know how Home Assistant exposes it. The easiest way to help is to copy the device's state information from Home Assistant and share it in a GitHub issue.
 
