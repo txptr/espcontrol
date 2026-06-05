@@ -473,6 +473,24 @@ script:
             - script.stop: screen_schedule_wake_timeout_check
       - if:
           condition:
+            lambda: |-
+              if (!id(cover_art_screensaver_active)) return false;
+              lv_indev_t *indev = nullptr;
+              while ((indev = lv_indev_get_next(indev)) != nullptr) {
+                if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER &&
+                    lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED) {
+                  return true;
+                }
+              }
+              return false;
+          then:
+            - globals.set:
+                id: screensaver_wake_touch_guard_skip_once
+                value: 'true'
+            - script.execute: cover_art_wake_touch_block
+            - script.wait: cover_art_wake_touch_block
+      - if:
+          condition:
             lambda: 'return id(display_asleep) || id(screen_schedule_asleep) || id(screensaver_display_off_active) || id(screensaver_dimmed_active) || id(cover_art_screensaver_active);'
           then:
             - script.stop: screensaver_idle_check

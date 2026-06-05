@@ -183,14 +183,6 @@ lvgl:
           hidden: true
           on_press:
             then:
-              - lambda: |-
-                  lv_indev_t *indev = nullptr;
-                  while ((indev = lv_indev_get_next(indev)) != nullptr) {
-                    if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER) {
-                      lv_indev_wait_release(indev);
-                    }
-                  }
-              - script.execute: cover_art_wake_touch_block
               - script.execute: screensaver_wake
           widgets:
             - obj:
