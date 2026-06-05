@@ -82,15 +82,6 @@ inline void format_clock_bar_temperature_single(char *buf, size_t size,
            display_clock_bar_temperature_suffix());
 }
 
-inline void format_clock_bar_temperature_pair(char *buf, size_t size,
-                                              const char *outdoor_text,
-                                              const char *indoor_text) {
-  const char *suffix = display_clock_bar_temperature_suffix();
-  snprintf(buf, size, "%s%s / %s%s", outdoor_text ? outdoor_text : "-", suffix,
-           indoor_text ? indoor_text : "-",
-           suffix);
-}
-
 inline std::vector<float> &clock_bar_temperature_values() {
   static std::vector<float> values;
   return values;
@@ -253,66 +244,36 @@ inline bool screensaver_action_dimmed_mode(const std::string &action) {
 
 // ── Temperature label visibility ─────────────────────────────────────
 
-inline void update_temp_label(lv_obj_t *label, lv_obj_t *main_page_obj,
-                              bool this_enabled, bool other_enabled) {
-  char one[12];
-  char both[24];
-  format_clock_bar_temperature_single(one, sizeof(one), "-");
-  format_clock_bar_temperature_pair(both, sizeof(both), "-", "-");
-  if (this_enabled) {
-    if (lv_scr_act() == main_page_obj)
-      lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(label, other_enabled ? both : one);
-  } else if (!other_enabled) {
-    lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
-  } else {
-    lv_label_set_text(label, one);
-  }
-}
-
-inline void refresh_temp_label_values(lv_obj_t *label, lv_obj_t *main_page_obj,
-                                      bool clock_bar_enabled,
-                                      bool indoor_enabled, bool outdoor_enabled,
-                                      float indoor, float outdoor) {
-  if (!clock_bar_enabled || (!indoor_enabled && !outdoor_enabled)) {
-    lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
-    return;
-  }
-
-  if (lv_scr_act() == main_page_obj) lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
-
-  char indoor_buf[16];
-  char outdoor_buf[16];
-  if (indoor_enabled) {
-    if (std::isnan(indoor)) snprintf(indoor_buf, sizeof(indoor_buf), "-");
-    else format_fixed_decimal(indoor_buf, sizeof(indoor_buf), indoor, 0);
-  }
-  if (outdoor_enabled) {
-    if (std::isnan(outdoor)) snprintf(outdoor_buf, sizeof(outdoor_buf), "-");
-    else format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), outdoor, 0);
-  }
-
-  char buf[40];
-  if (indoor_enabled && outdoor_enabled) {
-    format_clock_bar_temperature_pair(buf, sizeof(buf), outdoor_buf, indoor_buf);
-  } else if (outdoor_enabled) {
-    format_clock_bar_temperature_single(buf, sizeof(buf), outdoor_buf);
-  } else {
-    format_clock_bar_temperature_single(buf, sizeof(buf), indoor_buf);
-  }
-  lv_label_set_text(label, buf);
-}
-
 inline void refresh_clock_bar_temperature_label_values(
     lv_obj_t *main_page_obj, bool clock_bar_visible,
     bool indoor_enabled, bool outdoor_enabled,
     float indoor, float outdoor) {
   if (!clock_bar_temperature_has_items()) {
     std::vector<lv_obj_t *> &labels = clock_bar_temperature_labels();
-    lv_obj_t *legacy_label = labels.empty() ? nullptr : labels[0];
-    refresh_temp_label_values(legacy_label, main_page_obj, clock_bar_visible,
-                              indoor_enabled, outdoor_enabled, indoor, outdoor);
-    for (size_t i = 1; i < labels.size(); i++) {
+    if (!clock_bar_visible || (!indoor_enabled && !outdoor_enabled)) {
+      for (size_t i = 0; i < labels.size(); i++) {
+        if (labels[i]) lv_obj_add_flag(labels[i], LV_OBJ_FLAG_HIDDEN);
+      }
+      return;
+    }
+
+    const bool show_on_screen = !main_page_obj || lv_scr_act() == main_page_obj;
+    size_t label_index = 0;
+    auto set_legacy_temperature = [&](float value) {
+      if (label_index >= labels.size()) return;
+      lv_obj_t *label = labels[label_index++];
+      if (!label) return;
+      char value_buf[16];
+      if (std::isnan(value)) snprintf(value_buf, sizeof(value_buf), "-");
+      else format_fixed_decimal(value_buf, sizeof(value_buf), value, 0);
+      char buf[24];
+      format_clock_bar_temperature_single(buf, sizeof(buf), value_buf);
+      lv_label_set_text(label, buf);
+      if (show_on_screen) lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+    };
+    if (outdoor_enabled) set_legacy_temperature(outdoor);
+    if (indoor_enabled) set_legacy_temperature(indoor);
+    for (size_t i = label_index; i < labels.size(); i++) {
       if (labels[i]) lv_obj_add_flag(labels[i], LV_OBJ_FLAG_HIDDEN);
     }
     return;
@@ -442,6 +403,9 @@ inline ClockBarParsedLayout parse_clock_bar_layout(const std::string &layout_tex
   }
 
   clock_bar_add_item(layout, CLOCK_BAR_SECTION_LEFT, CLOCK_BAR_ITEM_TEMPERATURE);
+  for (int i = 1; i < CLOCK_BAR_TEMPERATURE_SLOT_COUNT; i++) {
+    clock_bar_add_item(layout, CLOCK_BAR_SECTION_LEFT, CLOCK_BAR_ITEM_TEMPERATURE + i);
+  }
   clock_bar_add_item(layout, CLOCK_BAR_SECTION_MIDDLE, CLOCK_BAR_ITEM_TIME);
   clock_bar_add_item(layout, CLOCK_BAR_SECTION_RIGHT, CLOCK_BAR_ITEM_NETWORK);
   return layout;

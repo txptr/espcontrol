@@ -1899,7 +1899,6 @@ inline void grid_phase3(
     std::function<void()> sleep_callback) {
   ESP_LOGI("sensors", "Phase 3: temp/presence/media subscriptions start (%lu ms)", esphome::millis());
   set_clock_bar_temperature_labels(temperature_labels, temperature_label_count);
-  lv_obj_t *temp_label = temperature_label_count > 0 ? temperature_labels[0] : nullptr;
 
   std::vector<std::string> clock_bar_entities = parse_clock_bar_temperature_entities(temperature_entities);
   if (!clock_bar_entities.empty()) {
@@ -1929,38 +1928,20 @@ inline void grid_phase3(
     outdoor_on = false;
   }
 
-  if (indoor_on && outdoor_on) {
-    char buf[32];
-    format_clock_bar_temperature_pair(buf, sizeof(buf), "-", "-");
-    lv_label_set_text(temp_label, buf);
-  } else if (indoor_on || outdoor_on) {
-    char buf[16];
-    format_clock_bar_temperature_single(buf, sizeof(buf), "-");
-    lv_label_set_text(temp_label, buf);
-  }
+  refresh_clock_bar_temperature_label_values(nullptr, true, indoor_on, outdoor_on,
+                                             indoor_temp_ptr ? *indoor_temp_ptr : NAN,
+                                             outdoor_temp_ptr ? *outdoor_temp_ptr : NAN);
 
   if (indoor_on && !indoor_entity.empty()) {
     ha_subscribe_state(
       indoor_entity,
       std::function<void(esphome::StringRef)>(
-        [indoor_temp_ptr, outdoor_temp_ptr, temp_label](esphome::StringRef state) {
+        [indoor_on, outdoor_on, indoor_temp_ptr, outdoor_temp_ptr](esphome::StringRef state) {
           float val = 0.0f;
           if (parse_float_ref(state, val)) {
             *indoor_temp_ptr = val;
-            float outdoor = *outdoor_temp_ptr;
-            char buf[40];
-            if (std::isnan(outdoor)) {
-              char indoor_buf[16];
-              format_fixed_decimal(indoor_buf, sizeof(indoor_buf), val, 0);
-              format_clock_bar_temperature_single(buf, sizeof(buf), indoor_buf);
-            } else {
-              char outdoor_buf[16];
-              char indoor_buf[16];
-              format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), outdoor, 0);
-              format_fixed_decimal(indoor_buf, sizeof(indoor_buf), val, 0);
-              format_clock_bar_temperature_pair(buf, sizeof(buf), outdoor_buf, indoor_buf);
-            }
-            lv_label_set_text(temp_label, buf);
+            refresh_clock_bar_temperature_label_values(nullptr, true, indoor_on, outdoor_on,
+                                                       *indoor_temp_ptr, *outdoor_temp_ptr);
           }
         })
     );
@@ -1970,24 +1951,12 @@ inline void grid_phase3(
     ha_subscribe_state(
       outdoor_entity,
       std::function<void(esphome::StringRef)>(
-        [indoor_temp_ptr, outdoor_temp_ptr, temp_label](esphome::StringRef state) {
+        [indoor_on, outdoor_on, indoor_temp_ptr, outdoor_temp_ptr](esphome::StringRef state) {
           float val = 0.0f;
           if (parse_float_ref(state, val)) {
             *outdoor_temp_ptr = val;
-            float indoor = *indoor_temp_ptr;
-            char buf[40];
-            if (std::isnan(indoor)) {
-              char outdoor_buf[16];
-              format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), val, 0);
-              format_clock_bar_temperature_single(buf, sizeof(buf), outdoor_buf);
-            } else {
-              char outdoor_buf[16];
-              char indoor_buf[16];
-              format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), val, 0);
-              format_fixed_decimal(indoor_buf, sizeof(indoor_buf), indoor, 0);
-              format_clock_bar_temperature_pair(buf, sizeof(buf), outdoor_buf, indoor_buf);
-            }
-            lv_label_set_text(temp_label, buf);
+            refresh_clock_bar_temperature_label_values(nullptr, true, indoor_on, outdoor_on,
+                                                       *indoor_temp_ptr, *outdoor_temp_ptr);
           }
         })
     );
