@@ -658,36 +658,6 @@ function buildSettingsPage(parent) {
     });
     els.setCoverArtHideExternalInputToggle = coverArtHideExternalInputToggle.input;
 
-    var coverArtOpenSubpageToggle = toggleRow(
-      "Open Media Subpage While Playing",
-      "sp-set-ss-cover-art-open-media",
-      state.coverArtOpenMediaSubpageOn);
-    coverArtOptions.appendChild(coverArtOpenSubpageToggle.row);
-    coverArtOpenSubpageToggle.input.addEventListener("change", function () {
-      state.coverArtOpenMediaSubpageOn = this.checked;
-      syncCoverArtScreensaverUi();
-      postSwitchWithObjectIds(
-        entityName("screen_saver_open_media_subpage"),
-        entityObjectIds("screen_saver_open_media_subpage"),
-        state.coverArtOpenMediaSubpageOn
-      );
-    });
-    els.setCoverArtOpenMediaSubpageToggle = coverArtOpenSubpageToggle.input;
-
-    var coverArtSubpageField = document.createElement("div");
-    coverArtSubpageField.className = "sp-field sp-cond-field";
-    coverArtSubpageField.appendChild(fieldLabel("Media Subpage", "sp-set-ss-cover-art-media-subpage"));
-    var coverArtSubpageSelect = document.createElement("select");
-    coverArtSubpageSelect.className = "sp-select";
-    coverArtSubpageSelect.id = "sp-set-ss-cover-art-media-subpage";
-    coverArtSubpageSelect.addEventListener("change", function () {
-      state.coverArtMediaSubpageTarget = this.value || "";
-      postText(entityName("screen_saver_media_subpage"), state.coverArtMediaSubpageTarget);
-    });
-    coverArtSubpageField.appendChild(coverArtSubpageSelect);
-    coverArtOptions.appendChild(coverArtSubpageField);
-    els.setCoverArtMediaSubpageField = coverArtSubpageField;
-    els.setCoverArtMediaSubpage = coverArtSubpageSelect;
 
     els.setCoverArtOptions = coverArtOptions;
     coverArtBody.appendChild(coverArtOptions);
@@ -1048,12 +1018,6 @@ function syncCoverArtScreensaverUi() {
   }
   if (els.setCoverArtHideExternalInputToggle) {
     els.setCoverArtHideExternalInputToggle.checked = !!state.coverArtHideExternalInputOn;
-  }
-  if (els.setCoverArtOpenMediaSubpageToggle) {
-    els.setCoverArtOpenMediaSubpageToggle.checked = !!state.coverArtOpenMediaSubpageOn;
-  }
-  if (els.setCoverArtMediaSubpageField) {
-    els.setCoverArtMediaSubpageField.classList.toggle("sp-visible", !!state.coverArtOpenMediaSubpageOn);
   }
 }
 
