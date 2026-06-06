@@ -188,6 +188,8 @@ select:
             refresh_temperature_unit_labels();
             refresh_clock_bar_temperature_label_values(id(main_page)->obj,
                                                       id(clock_bar_enabled).state &&
+                                        clock_bar_active_on_button_grid_page(id(main_page)->obj) &&
+                                        !id(screensaver_display_off_active) &&
                                         !id(is_clock_showing) &&
                                         !id(cover_art_screensaver_active),
                                       id(indoor_temp_enable).state,

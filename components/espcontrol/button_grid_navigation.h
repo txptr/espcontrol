@@ -51,6 +51,7 @@ inline void navigation_hide_modals() {
 
 inline void navigation_clear_subpages() {
   navigation_subpages().clear();
+  clock_bar_clear_button_grid_pages();
 }
 
 inline void navigation_register_subpage(int slot, int display_order,
@@ -65,6 +66,7 @@ inline void navigation_register_subpage(int slot, int display_order,
   entry.label = navigation_trim(label);
   entry.screen = screen;
   navigation_subpages().push_back(entry);
+  clock_bar_register_button_grid_page(screen);
 }
 
 inline int navigation_slot_from_target(const std::string &target) {

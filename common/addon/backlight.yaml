@@ -338,6 +338,7 @@ script:
       - script.execute: hide_cover_art_view
       - lvgl.widget.hide: dim_screensaver_touch_guard
       - lvgl.page.show: screen_off_page
+      - script.execute: clock_bar_hide
       - delay: 50ms
       - script.execute: backlight_force_display_off
       - lvgl.pause:
@@ -354,6 +355,7 @@ script:
           value: 'false'
       - lvgl.widget.hide: dim_screensaver_touch_guard
       - lvgl.page.show: screen_off_page
+      - script.execute: clock_bar_hide
       - delay: 50ms
       - script.execute: backlight_force_display_off
       - lvgl.pause:
@@ -730,37 +732,7 @@ script:
     then:
       - lambda: 'id(is_clock_showing) = false;'
       - lvgl.widget.hide: clock_screensaver
-      - lambda: |-
-          lv_obj_set_style_pad_top(
-            id(main_page)->obj,
-            id(clock_bar_enabled).state ? ${main_page_pad_top} : ${main_page_compact_pad_top},
-            LV_PART_MAIN);
-          lv_obj_update_layout(id(main_page)->obj);
-      - if:
-          condition:
-            switch.is_on: clock_bar_enabled
-          then:
-            - lvgl.widget.show: display_time
-            - if:
-                condition:
-                  switch.is_on: network_status_enabled
-                then:
-                  - lvgl.widget.show: network_status_button
-                  - script.execute: network_status_refresh
-                else:
-                  - lvgl.widget.hide: network_status_button
-                  - lambda: 'network_status_hide_modal();'
-            - if:
-                condition:
-                  or:
-                    - switch.is_on: indoor_temp_enable
-                    - switch.is_on: outdoor_temp_enable
-                then:
-                  - lvgl.widget.show: temperatures
-          else:
-            - lvgl.widget.hide: display_time
-            - lvgl.widget.hide: temperatures
-            - lvgl.widget.hide: network_status_button
+      - script.execute: clock_bar_apply
 
 # -----------------------------------------------------------------------------
 # Clock screensaver drift update (repositions label for burn-in prevention)

@@ -59,7 +59,8 @@ inline void network_status_update_visibility(lv_obj_t *button, lv_obj_t *main_pa
                                              bool clock_bar_enabled,
                                              bool network_status_enabled) {
   if (!button) return;
-  if (clock_bar_enabled && network_status_enabled && lv_scr_act() == main_page_obj) {
+  if (clock_bar_enabled && network_status_enabled &&
+      clock_bar_active_on_button_grid_page(main_page_obj)) {
     lv_obj_clear_flag(button, LV_OBJ_FLAG_HIDDEN);
   } else {
     lv_obj_add_flag(button, LV_OBJ_FLAG_HIDDEN);

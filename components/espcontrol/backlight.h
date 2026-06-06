@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstring>
 #include <vector>
+#include <algorithm>
 #include "esphome/components/lvgl/lvgl_esphome.h"
 #include "sun_calc.h"
 #include "temperature_unit.h"
@@ -21,6 +22,33 @@
 #endif
 
 static const size_t CLOCK_BAR_TEMPERATURE_SLOT_COUNT = 6;
+
+// ── Clock-bar page visibility ────────────────────────────────────────
+
+inline std::vector<lv_obj_t *> &clock_bar_button_grid_pages() {
+  static std::vector<lv_obj_t *> pages;
+  return pages;
+}
+
+inline void clock_bar_clear_button_grid_pages() {
+  clock_bar_button_grid_pages().clear();
+}
+
+inline void clock_bar_register_button_grid_page(lv_obj_t *page) {
+  if (!page) return;
+  std::vector<lv_obj_t *> &pages = clock_bar_button_grid_pages();
+  if (std::find(pages.begin(), pages.end(), page) == pages.end()) {
+    pages.push_back(page);
+  }
+}
+
+inline bool clock_bar_active_on_button_grid_page(lv_obj_t *main_page_obj = nullptr) {
+  lv_obj_t *active = lv_scr_act();
+  if (!active) return false;
+  if (main_page_obj && active == main_page_obj) return true;
+  std::vector<lv_obj_t *> &pages = clock_bar_button_grid_pages();
+  return std::find(pages.begin(), pages.end(), active) != pages.end();
+}
 
 // ── Sunrise/sunset recalculation ─────────────────────────────────────
 
@@ -248,16 +276,17 @@ inline void refresh_clock_bar_temperature_label_values(
     lv_obj_t *main_page_obj, bool clock_bar_visible,
     bool indoor_enabled, bool outdoor_enabled,
     float indoor, float outdoor) {
+  const bool show_on_screen =
+      clock_bar_visible && clock_bar_active_on_button_grid_page(main_page_obj);
   if (!clock_bar_temperature_has_items()) {
     std::vector<lv_obj_t *> &labels = clock_bar_temperature_labels();
-    if (!clock_bar_visible || (!indoor_enabled && !outdoor_enabled)) {
+    if (!show_on_screen || (!indoor_enabled && !outdoor_enabled)) {
       for (size_t i = 0; i < labels.size(); i++) {
         if (labels[i]) lv_obj_add_flag(labels[i], LV_OBJ_FLAG_HIDDEN);
       }
       return;
     }
 
-    const bool show_on_screen = !main_page_obj || lv_scr_act() == main_page_obj;
     size_t label_index = 0;
     auto set_legacy_temperature = [&](float value) {
       if (label_index >= labels.size()) return;
@@ -280,14 +309,13 @@ inline void refresh_clock_bar_temperature_label_values(
   }
 
   std::vector<lv_obj_t *> &labels = clock_bar_temperature_labels();
-  if (!clock_bar_visible) {
+  if (!show_on_screen) {
     for (size_t i = 0; i < labels.size(); i++) {
       if (labels[i]) lv_obj_add_flag(labels[i], LV_OBJ_FLAG_HIDDEN);
     }
     return;
   }
   std::vector<float> &values = clock_bar_temperature_values();
-  const bool show_on_screen = !main_page_obj || lv_scr_act() == main_page_obj;
   for (size_t i = 0; i < labels.size(); i++) {
     lv_obj_t *label = labels[i];
     if (!label) continue;
