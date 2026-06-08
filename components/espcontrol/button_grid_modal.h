@@ -217,6 +217,13 @@ inline lv_coord_t control_modal_screen_width(lv_coord_t fallback = 480) {
   return disp ? lv_disp_get_hor_res(disp) : fallback;
 }
 
+inline bool control_modal_current_is_jc4880p443_size() {
+  lv_disp_t *disp = lv_disp_get_default();
+  lv_coord_t width = disp ? lv_disp_get_hor_res(disp) : 0;
+  lv_coord_t height = disp ? lv_disp_get_ver_res(disp) : 0;
+  return display_modal_is_jc4880p443_size(width, height);
+}
+
 inline lv_coord_t control_modal_controls_down_px(const ControlModalLayout &layout) {
   return control_modal_scaled_px(CONTROL_MODAL_CONTROLS_DOWN_REF_PX, layout.short_side);
 }

@@ -204,7 +204,7 @@ var IMAGE_LABEL_OPTION = "image_label";
 var IMAGE_MODAL_MODE_OPTION = "image_modal_mode";
 var IMAGE_REFRESH_OPTION = "image_refresh";
 var IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
-var IMAGE_CARD_LIMIT = 4;
+var IMAGE_CARD_LIMIT = Math.max(1, parseInt((CFG && CFG.imageCardLimit) || 4, 10) || 4);
 var ALARM_ACTIONS = [
   { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Shield Lock" },
   { value: "home", label: "Arm Home", service: "alarm_control_panel.alarm_arm_home", icon: "Shield Home" },

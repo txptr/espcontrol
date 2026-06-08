@@ -196,6 +196,10 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
     for key in ("widthCompensationPercent", "volumeWidthCompensationPercent"):
         if key in display and not is_number(display[key]):
             errors.append(device_error(slug, f"firmware.display.{key} must be a number when set"))
+    if "imageCardDownloaders" in display:
+        value = display["imageCardDownloaders"]
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1 or value > 6:
+            errors.append(device_error(slug, "firmware.display.imageCardDownloaders must be an integer from 1 to 6 when set"))
 
     correction = display.get("colorCorrection")
     if correction is not None:
@@ -505,11 +509,13 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
 def web_config(profile: dict[str, Any]) -> dict[str, Any]:
     layout = profile["layout"]
     features = web_features(profile)
+    display = profile["firmware"].get("display") or {}
     cfg: dict[str, Any] = {
         "slots": profile["slots"],
         "cols": layout["cols"],
         "rows": layout["rows"],
         "largeSensorUnitOffsetPercent": profile["settings"]["largeSensorUnitOffsetPercent"],
+        "imageCardLimit": display.get("imageCardDownloaders", 4),
     }
     for key, value in profile["web"].items():
         cfg[key] = copy.deepcopy(value)
@@ -566,6 +572,8 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
             "green": correction.get("greenPercent", 100),
             "blue": correction.get("bluePercent", 100),
         }
+    if display.get("imageCardDownloaders", 4) != 4:
+        slot["image_card_downloaders"] = display["imageCardDownloaders"]
     if rotation.get("rotateWidthCompensation"):
         slot["rotate_width_compensation"] = True
     return slot

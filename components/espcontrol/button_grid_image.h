@@ -2,14 +2,21 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
+#ifdef ESP_PLATFORM
+#include "esp_heap_caps.h"
+#endif
+
 #include "esphome/core/version.h"
 #include <cstring>
 
 constexpr uint32_t IMAGE_CARD_STARTUP_RETRY_MS = 45000;
 constexpr uint32_t IMAGE_CARD_RETRY_INTERVAL_MS = 2000;
+constexpr uint32_t IMAGE_CARD_API_RETRY_INTERVAL_MS = 250;
 constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
 constexpr uint8_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
+constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;
 constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;
+constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;
 constexpr const char *IMAGE_CARD_LOADING_ICON = "\U000F02E9";
 
 struct ImageCardCtx {
@@ -51,7 +58,7 @@ struct ImageCardModalUi {
 };
 
 inline ImageCardCtx *image_card_contexts() {
-  static ImageCardCtx contexts[4];
+  static ImageCardCtx contexts[IMAGE_CARD_MAX_CONTEXTS];
   return contexts;
 }
 
@@ -199,6 +206,35 @@ inline bool image_card_startup_retry_active(ImageCardCtx *ctx,
          (int32_t)(now - ctx->retry_deadline_ms) < 0;
 }
 
+inline size_t image_card_estimated_buffer_bytes(int width, int height) {
+  if (width <= 0 || height <= 0) return 0;
+  return static_cast<size_t>(width) * static_cast<size_t>(height) * 2u;
+}
+
+inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,
+                                        int width, int height) {
+#ifdef ESP_PLATFORM
+  size_t image_bytes = image_card_estimated_buffer_bytes(width, height);
+  size_t needed_free = image_bytes + IMAGE_CARD_MEMORY_HEADROOM_BYTES;
+  size_t heap_free = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+  size_t heap_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+  if (image_bytes > 0 && (heap_free < needed_free || heap_largest < image_bytes)) {
+    ESP_LOGW("image_card",
+             "Skipping %s image refresh for %s: need=%u largest=%u free=%u target=%dx%d",
+             stage ? stage : "camera", ctx ? ctx->entity_id.c_str() : "(unknown)",
+             (unsigned) needed_free, (unsigned) heap_largest, (unsigned) heap_free,
+             width, height);
+    return false;
+  }
+#else
+  (void) ctx;
+  (void) stage;
+  (void) width;
+  (void) height;
+#endif
+  return true;
+}
+
 inline void image_card_apply_downloaded(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->widget || !ctx->image) return;
   if (ctx->image->get_url() != ctx->url) return;
@@ -295,7 +331,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
   }
   ImageCardCtx *contexts = image_card_contexts();
   int count = cfg.image_card_image_count;
-  if (count > 4) count = 4;
+  if (count > IMAGE_CARD_MAX_CONTEXTS) count = IMAGE_CARD_MAX_CONTEXTS;
   for (int i = 0; i < count; i++) {
     contexts[i].active = false;
     contexts[i].widget = nullptr;
@@ -330,7 +366,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
 inline ImageCardCtx *acquire_image_card_context(const GridConfig &cfg) {
   ImageCardCtx *contexts = image_card_contexts();
   int count = cfg.image_card_image_count;
-  if (count > 4) count = 4;
+  if (count > IMAGE_CARD_MAX_CONTEXTS) count = IMAGE_CARD_MAX_CONTEXTS;
   for (int i = 0; i < count; i++) {
     if (!contexts[i].active && contexts[i].image) {
       contexts[i].active = true;
@@ -407,6 +443,10 @@ inline bool image_card_apply_modal_geometry(ImageCardCtx *ctx,
   if (target_width) *target_width = width;
   if (target_height) *target_height = height;
   return true;
+}
+
+inline bool image_card_modal_refresh_supported() {
+  return !control_modal_current_is_jc4880p443_size();
 }
 
 inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t source_height,
@@ -603,11 +643,18 @@ inline std::string image_card_sized_url(const std::string &url,
 
 inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef picture);
 
+inline void image_card_schedule_picture_retry(ImageCardCtx *ctx, uint32_t delay_ms) {
+  if (!ctx || !ctx->active) return;
+  ctx->next_picture_retry_ms = esphome::millis() + delay_ms;
+}
+
 inline void image_card_request_picture(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || ctx->entity_id.empty()) return;
   if (!ha_api_state_connected()) {
-    if (image_card_startup_retry_active(ctx)) {
-      ctx->next_picture_retry_ms = esphome::millis() + IMAGE_CARD_RETRY_INTERVAL_MS;
+    if (ha_api_connected() || image_card_startup_retry_active(ctx)) {
+      image_card_schedule_picture_retry(
+        ctx,
+        ha_api_connected() ? IMAGE_CARD_API_RETRY_INTERVAL_MS : IMAGE_CARD_RETRY_INTERVAL_MS);
       image_card_set_loading_state(ctx, "Loading", true);
     }
     return;
@@ -620,8 +667,10 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
         image_card_handle_picture(ctx, picture);
       })
   );
-  if (!requested && image_card_startup_retry_active(ctx)) {
-    ctx->next_picture_retry_ms = esphome::millis() + IMAGE_CARD_RETRY_INTERVAL_MS;
+  if (!requested && (ha_api_connected() || image_card_startup_retry_active(ctx))) {
+    image_card_schedule_picture_retry(
+      ctx,
+      ha_api_connected() ? IMAGE_CARD_API_RETRY_INTERVAL_MS : IMAGE_CARD_RETRY_INTERVAL_MS);
   }
 }
 
@@ -649,6 +698,14 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   lv_obj_t *loading = image_card_loading_widget(ctx->widget);
   image_card_position_widget(ctx->btn, loading);
   image_card_refresh_loading_layout(loading);
+  if (!image_card_memory_available(ctx, "tile", width, height)) {
+    ctx->next_download_retry_ms = now + IMAGE_CARD_RETRY_INTERVAL_MS;
+    if (!ctx->image_ready) {
+      image_card_hide(ctx);
+      image_card_set_loading_state(ctx, "Unavailable", true);
+    }
+    return;
+  }
   ctx->url = image_card_cache_bust_url(image_card_sized_url(ctx->source_url, width, height));
   ctx->requested_once = true;
   ctx->next_download_retry_ms = 0;
@@ -667,6 +724,11 @@ inline bool image_card_request_modal_source_url(ImageCardCtx *ctx) {
       ctx->source_url.empty() || !image_card_modal_active_for(ctx)) {
     return false;
   }
+  if (!image_card_modal_refresh_supported()) {
+    ESP_LOGI("image_card", "Using cached tile image in modal for small P4 screen: %s",
+             ctx->entity_id.c_str());
+    return false;
+  }
   ImageCardModalUi &ui = image_card_modal_ui();
   lv_obj_update_layout(ui.panel);
   lv_coord_t panel_width = lv_obj_get_width(ui.panel);
@@ -675,6 +737,7 @@ inline bool image_card_request_modal_source_url(ImageCardCtx *ctx) {
   int height = 0;
   image_card_limit_target_size(panel_width, panel_height, &width, &height);
   if (width <= 0 || height <= 0) return false;
+  if (!image_card_memory_available(ctx, "modal", width, height)) return false;
   ctx->modal_url = image_card_cache_bust_url(image_card_sized_url(ctx->source_url, width, height));
   ctx->modal_image->set_target_size(width, height);
   ctx->modal_image->set_resize_mode(
@@ -700,6 +763,7 @@ inline void image_card_schedule_source_refresh(ImageCardCtx *ctx, uint32_t delay
 inline void image_card_hide_modal() {
   ImageCardModalUi &ui = image_card_modal_ui();
   ImageCardCtx *ctx = ui.active;
+  if (ctx) ESP_LOGI("image_card", "Closing image modal for %s", ctx->entity_id.c_str());
   image_card_clear_widget_source(ui.image_widget);
   control_modal_delete_overlay(ControlModalKind::IMAGE_CARD, ui.overlay);
   ui = ImageCardModalUi();
@@ -787,10 +851,10 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
 }
 
 inline void refresh_image_cards() {
-  if (!ha_api_state_connected()) return;
+  if (!ha_api_connected()) return;
   ImageCardCtx *contexts = image_card_contexts();
   uint32_t now = esphome::millis();
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
     ImageCardCtx *ctx = &contexts[i];
     if (!ctx->active) continue;
     if (!ctx->image_ready) {
@@ -805,7 +869,7 @@ inline void refresh_image_cards() {
 inline void image_card_refresh_due() {
   ImageCardCtx *contexts = image_card_contexts();
   uint32_t now = esphome::millis();
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
     ImageCardCtx *ctx = &contexts[i];
     if (!ctx->active || ctx->refresh_interval_ms == 0 ||
         ctx->source_url.empty() || !ctx->requested_once) {
@@ -862,6 +926,7 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
   ImageCardCtx *ctx = acquire_image_card_context(cfg);
   if (!ctx) {
     ESP_LOGW("image_card", "No image card downloader available for %s", p.entity.c_str());
+    image_card_set_loading_state(loading, "Too many");
     return true;
   }
   ctx->widget = widget;

@@ -658,8 +658,12 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
     errors: list[str] = []
     if "IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX" not in text:
         errors.append(f"{rel}: cap high-resolution image card modal downloads")
+    if "IMAGE_CARD_MAX_CONTEXTS = 6" not in text:
+        errors.append(f"{rel}: support six concurrent image cards on P4 displays")
     if "image_card_limit_target_size" not in text:
         errors.append(f"{rel}: scale image card modal downloads to a display-appropriate size")
+    if "image_card_memory_available" not in text or "IMAGE_CARD_MEMORY_HEADROOM_BYTES" not in text:
+        errors.append(f"{rel}: check free memory before image-card downloads")
     if "ctx->image->cancel_update();" not in text:
         errors.append(f"{rel}: cancel in-flight image downloads before opening image card modals")
     if "Deferring image refresh while modal is open" not in text:
@@ -676,6 +680,12 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         errors.append(f"{rel}: swap expanded image cards to the modal-quality image after it downloads")
     if "ctx->modal_image->release()" not in text:
         errors.append(f"{rel}: release modal image-card buffers when the modal closes")
+    if 'image_card_set_loading_state(loading, "Too many")' not in text:
+        errors.append(f"{rel}: show a visible image-card limit message when downloaders run out")
+    if "image_card_modal_refresh_supported" not in text or "control_modal_current_is_jc4880p443_size" not in text:
+        errors.append(f"{rel}: avoid extra modal image downloads on the 4.3-inch P4 screen")
+    if "Closing image modal" not in text:
+        errors.append(f"{rel}: log image-card modal close events")
     if "lv_obj_set_style_clip_corner(ui.panel, true, LV_PART_MAIN)" not in text:
         errors.append(f"{rel}: clip image card modal content to rounded panel corners")
     if "image_card_apply_corner_clip" not in text:
@@ -698,6 +708,10 @@ def firmware_image_card_startup_errors(
     errors: list[str] = []
     if "inline void refresh_image_cards()" not in text:
         errors.append(f"{rel}: refresh image cards when Home Assistant reconnects")
+    if "IMAGE_CARD_API_RETRY_INTERVAL_MS" not in text:
+        errors.append(f"{rel}: retry image-card startup quickly after Home Assistant API connects")
+    if "if (!ha_api_connected()) return;" not in text:
+        errors.append(f"{rel}: arm image-card refresh from the Home Assistant API connection")
     if "if (!ha_api_state_connected())" not in text:
         errors.append(f"{rel}: wait for Home Assistant state subscription before requesting image attributes")
     if "image_card_sized_url(ctx->source_url, width, height)" not in text:
@@ -708,6 +722,8 @@ def firmware_image_card_startup_errors(
     if core_infra_path.exists():
         core_rel = core_infra_path.relative_to(root)
         core_text = core_infra_path.read_text(encoding="utf-8")
+        if "is_home_assistant && ha_api_connected()" not in core_text:
+            errors.append(f"{core_rel}: start image-card refresh when Home Assistant API connects")
         if core_text.count("refresh_image_cards();") < 4:
             errors.append(f"{core_rel}: refresh image cards through Home Assistant connect retries")
     return errors
@@ -2186,6 +2202,11 @@ def run_self_test() -> int:
             "request expanded image-card downloads through the modal downloader",
             "swap expanded image cards to the modal-quality image after it downloads",
             "release modal image-card buffers when the modal closes",
+            "support six concurrent image cards on P4 displays",
+            "check free memory before image-card downloads",
+            "show a visible image-card limit message when downloaders run out",
+            "avoid extra modal image downloads on the 4.3-inch P4 screen",
+            "log image-card modal close events",
             "clip image card modal content to rounded panel corners",
             "preserve image card rounded corners while pressed",
             "apply image card corner clipping to the pressed state",
@@ -2193,9 +2214,16 @@ def run_self_test() -> int:
     )
     expect_image_card_quality_errors(
         "image card modal requests capped image",
+        "constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;\n"
         "constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;\n"
+        "constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;\n"
         "inline lv_style_selector_t image_card_pressed_selector() { return LV_STATE_PRESSED; }\n"
         "inline void image_card_apply_corner_clip(lv_obj_t *obj, lv_coord_t radius) {}\n"
+        "inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,\n"
+        "                                        int width, int height) { return true; }\n"
+        "inline bool image_card_modal_refresh_supported() {\n"
+        "  return !control_modal_current_is_jc4880p443_size();\n"
+        "}\n"
         "inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t source_height,\n"
         "                                         int *target_width, int *target_height) {}\n"
         "inline void image_card_request_source_url(ImageCardCtx *ctx) {\n"
@@ -2212,7 +2240,14 @@ def run_self_test() -> int:
         "    ESP_LOGD(\"image_card\", \"Deferring image refresh while modal is open for %s\", ctx->entity_id.c_str());\n"
         "  }\n"
         "  ctx->image->cancel_update();\n"
+        "  ESP_LOGI(\"image_card\", \"Closing image modal for %s\", ctx->entity_id.c_str());\n"
         "  ctx->modal_image->release();\n"
+        "}\n"
+        "inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cfg,\n"
+        "                            const ThemePalette &palette) {\n"
+        "  lv_obj_t *loading = image_card_loading_widget(widget);\n"
+        "  image_card_set_loading_state(loading, \"Too many\");\n"
+        "  return true;\n"
         "}\n",
         (),
     )
@@ -2230,14 +2265,18 @@ def run_self_test() -> int:
         "        refresh_weather_forecast_cards();\n",
         (
             "refresh image cards when Home Assistant reconnects",
+            "retry image-card startup quickly after Home Assistant API connects",
+            "arm image-card refresh from the Home Assistant API connection",
             "wait for Home Assistant state subscription before requesting image attributes",
             "request display-sized Home Assistant image card downloads",
             "recognize Home Assistant camera and image proxy URLs",
+            "start image-card refresh when Home Assistant API connects",
             "refresh image cards through Home Assistant connect retries",
         ),
     )
     expect_image_card_startup_errors(
         "image card refreshes on Home Assistant reconnect",
+        "constexpr uint32_t IMAGE_CARD_API_RETRY_INTERVAL_MS = 250;\n"
         "inline bool image_card_home_assistant_proxy_url(const std::string &url) {\n"
         "  return url.find(\"/api/camera_proxy/\") != std::string::npos ||\n"
         "         url.find(\"/api/image_proxy/\") != std::string::npos;\n"
@@ -2249,12 +2288,15 @@ def run_self_test() -> int:
         "  ctx->url = image_card_cache_bust_url(image_card_sized_url(ctx->source_url, width, height));\n"
         "}\n"
         "inline void refresh_image_cards() {\n"
+        "  if (!ha_api_connected()) return;\n"
         "  image_card_request_picture(ctx);\n"
         "}\n",
         "api:\n"
         "  on_client_connected:\n"
         "    - lambda: |-\n"
+        "        if (is_home_assistant && ha_api_connected()) {\n"
         "        refresh_image_cards();\n"
+        "        }\n"
         "    - delay: 2s\n"
         "    - lambda: |-\n"
         "        refresh_image_cards();\n"
