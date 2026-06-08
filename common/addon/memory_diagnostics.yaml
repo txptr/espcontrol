@@ -1,0 +1,21 @@
+# =============================================================================
+# MEMORY DIAGNOSTICS - Device memory exposed to Home Assistant
+# =============================================================================
+# Current free internal heap, minimum free internal heap since boot, and free
+# PSRAM. All sensors are diagnostic and update once per minute.
+# =============================================================================
+
+debug:
+  update_interval: 60s
+
+sensor:
+  - platform: debug
+    free:
+      name: "Memory: Heap Free"
+      entity_category: diagnostic
+    min_free:
+      name: "Memory: Heap Min Free"
+      entity_category: diagnostic
+    psram:
+      name: "Memory: PSRAM Free"
+      entity_category: diagnostic
