@@ -57,6 +57,19 @@ inline bool image_card_modal_active_for(ImageCardCtx *ctx) {
   return ctx && ui.active == ctx && ui.overlay && ui.image_widget;
 }
 
+inline uint32_t image_card_scale_for_size(lv_coord_t target_width, lv_coord_t target_height,
+                                          int source_width, int source_height, bool fit) {
+  if (target_width <= 0 || target_height <= 0 || source_width <= 0 || source_height <= 0) {
+    return 256;
+  }
+  uint32_t scale_x = static_cast<uint32_t>(target_width) * 256u / static_cast<uint32_t>(source_width);
+  uint32_t scale_y = static_cast<uint32_t>(target_height) * 256u / static_cast<uint32_t>(source_height);
+  uint32_t scale = fit
+    ? (scale_x < scale_y ? scale_x : scale_y)
+    : (scale_x > scale_y ? scale_x : scale_y);
+  return scale == 0 ? 1 : scale;
+}
+
 inline void image_card_set_widget_source(lv_obj_t *widget,
                                          esphome::artwork_image::ArtworkImage *image) {
   if (!widget || !image) return;
@@ -256,10 +269,20 @@ inline bool image_card_apply_modal_geometry(ImageCardCtx *ctx,
   lv_obj_set_style_radius(
     ui.image_widget, lv_obj_get_style_radius(ui.panel, LV_PART_MAIN), LV_PART_MAIN);
   lv_obj_set_style_clip_corner(ui.image_widget, true, LV_PART_MAIN);
-  ctx->image->set_target_size(width, height);
-  ctx->image->set_resize_mode(ctx->modal_fit
-    ? esphome::artwork_image::ImageResizeMode::FIT
-    : esphome::artwork_image::ImageResizeMode::COVER);
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+  lv_image_set_inner_align(
+    ui.image_widget, ctx->modal_fit ? LV_IMAGE_ALIGN_CONTAIN : LV_IMAGE_ALIGN_COVER);
+#else
+  int source_width = ctx->image->get_fixed_width();
+  int source_height = ctx->image->get_fixed_height();
+  uint32_t zoom = image_card_scale_for_size(width, height, source_width, source_height, ctx->modal_fit);
+  lv_coord_t scaled_width = static_cast<lv_coord_t>(static_cast<int64_t>(source_width) * zoom / 256);
+  lv_coord_t scaled_height = static_cast<lv_coord_t>(static_cast<int64_t>(source_height) * zoom / 256);
+  lv_img_set_pivot(ui.image_widget, 0, 0);
+  lv_img_set_zoom(ui.image_widget, zoom);
+  lv_obj_set_pos(ui.image_widget, (width - scaled_width) / 2, (height - scaled_height) / 2);
+  lv_obj_set_size(ui.image_widget, source_width, source_height);
+#endif
   if (target_width) *target_width = width;
   if (target_height) *target_height = height;
   return true;
@@ -430,12 +453,11 @@ inline void image_card_hide_modal() {
   ui = ImageCardModalUi();
   if (ctx && ctx->active && ctx->image) {
     image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
-    if (!ctx->source_url.empty()) image_card_request_source_url(ctx);
   }
 }
 
 inline void image_card_open_modal(ImageCardCtx *ctx) {
-  if (!ctx || !ctx->active || !ctx->image || ctx->source_url.empty()) {
+  if (!ctx || !ctx->active || !ctx->image || !ctx->image_ready) {
     ESP_LOGW("image_card", "No camera image is ready to open");
     return;
   }
@@ -464,12 +486,11 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   lv_obj_set_style_pad_all(ui.image_widget, 0, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.image_widget, 0, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.image_widget, LV_OPA_TRANSP, LV_PART_MAIN);
-  image_card_apply_modal_geometry(ctx);
   image_card_set_widget_source(ui.image_widget, ctx->image);
+  image_card_apply_modal_geometry(ctx);
   lv_obj_move_background(ui.image_widget);
   lv_obj_move_foreground(ui.back_btn);
   lv_obj_move_foreground(ui.overlay);
-  image_card_request_source_url(ctx);
 }
 
 inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef picture) {
