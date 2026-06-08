@@ -130,6 +130,16 @@ inline void image_card_refresh_loading_layout(lv_obj_t *loading_widget) {
   lv_obj_set_style_flex_main_place(loading_widget, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
   lv_obj_set_style_flex_cross_place(loading_widget, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
   lv_obj_set_style_pad_row(loading_widget, 16, LV_PART_MAIN);
+  lv_obj_t *icon = image_card_loading_icon(loading_widget);
+  if (icon) {
+    lv_obj_set_width(icon, lv_pct(100));
+    lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  }
+  lv_obj_t *label = image_card_loading_label(loading_widget);
+  if (label) {
+    lv_obj_set_width(label, lv_pct(100));
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  }
   lv_obj_update_layout(loading_widget);
 }
 
