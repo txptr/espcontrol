@@ -213,7 +213,7 @@ var CSS =
   ".sp-settings-status-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}" +
 
   ".sp-settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);" +
-  "z-index:100;align-items:center;justify-content:center;" +
+  "z-index:180;align-items:center;justify-content:center;" +
   "backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
   ".sp-settings-overlay.sp-visible{display:flex}" +
   ".sp-settings-modal{position:relative;background:var(--bg);border:1px solid var(--border);" +
@@ -247,6 +247,10 @@ var CSS =
   ".sp-card-type-copy{display:grid;gap:6px;min-width:0}" +
   ".sp-card-type-title{font-size:.93rem;font-weight:600;line-height:1.25;color:var(--text);overflow-wrap:anywhere}" +
   ".sp-card-type-description{font-size:.78rem;line-height:1.35;color:var(--text2);overflow-wrap:anywhere}" +
+  "@media(max-width:600px){.sp-card-type-grid{gap:10px}.sp-card-type-option{min-height:0;" +
+  "padding:12px 14px;gap:12px;align-items:center}.sp-card-type-icon{width:30px;height:30px;" +
+  "border-radius:7px;font-size:20px}.sp-card-type-copy{gap:3px}.sp-card-type-title{font-size:.88rem}" +
+  ".sp-card-type-description{font-size:.75rem;line-height:1.3}}" +
 
   ".card{background:var(--surface);border:1px solid var(--border);" +
   "border-radius:var(--radius);padding:24px;margin-bottom:var(--gap);transition:border-color .2s}" +
