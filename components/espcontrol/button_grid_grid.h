@@ -135,13 +135,13 @@ inline void apply_large_sensor_number_style(const BtnSlot &s, const lv_font_t *l
 }
 
 inline bool large_number_square_card_layout(int row_span, int col_span) {
-  return row_span == 2 && col_span == 2;
+  return card_span_is_large(row_span, col_span);
 }
 
 inline bool card_large_date_time_layout(const ParsedCfg &p, int row_span, int col_span) {
   if (p.type == "clock") {
     return large_number_square_card_layout(row_span, col_span) ||
-           (row_span == 1 && col_span == 2);
+           card_span_is_wide(row_span, col_span);
   }
   return large_number_square_card_layout(row_span, col_span);
 }
@@ -153,7 +153,7 @@ inline bool card_large_numbers_active_for_layout(const ParsedCfg &p, int row_spa
 }
 
 inline bool wide_large_date_time_card_layout(int row_span, int col_span) {
-  return row_span == 1 && col_span == 2;
+  return card_span_is_wide(row_span, col_span);
 }
 
 inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
@@ -862,7 +862,7 @@ inline void grid_phase2(
     ParsedCfg p = parse_cfg(scfg);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
-    bool is_1x1_card = row_span == 1 && col_span == 1;
+    bool is_1x1_card = card_span_is_single(row_span, col_span);
     if (cfg.info_only && info_only_hidden_card_type(p)) continue;
     if (p.type == "push") continue;
     if (bind_image_card(s, p, cfg)) continue;
@@ -1614,7 +1614,7 @@ inline void grid_phase2(
               display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
             display_icon_font(display),
             display_main_width_percent(display),
-            rs == 1 && cs == 1);
+            card_span_is_single(rs, cs));
           subscribe_todo_state(ctx);
           subscribe_todo_friendly_name(ctx);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {

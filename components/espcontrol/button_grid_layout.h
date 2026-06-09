@@ -58,19 +58,65 @@ struct OrderResult {
   int col_span[MAX_GRID_SLOTS] = {};     // number of grid columns used by each slot
 };
 
+constexpr int CARD_SIZE_SINGLE_ROW_SPAN = 1;
+constexpr int CARD_SIZE_SINGLE_COL_SPAN = 1;
+constexpr char CARD_SIZE_TALL_TOKEN = 'd';
+constexpr int CARD_SIZE_TALL_ROW_SPAN = 2;
+constexpr int CARD_SIZE_TALL_COL_SPAN = 1;
+constexpr char CARD_SIZE_WIDE_TOKEN = 'w';
+constexpr int CARD_SIZE_WIDE_ROW_SPAN = 1;
+constexpr int CARD_SIZE_WIDE_COL_SPAN = 2;
+constexpr char CARD_SIZE_LARGE_TOKEN = 'b';
+constexpr int CARD_SIZE_LARGE_ROW_SPAN = 2;
+constexpr int CARD_SIZE_LARGE_COL_SPAN = 2;
+constexpr char CARD_SIZE_EXTRA_TALL_TOKEN = 't';
+constexpr int CARD_SIZE_EXTRA_TALL_ROW_SPAN = 3;
+constexpr int CARD_SIZE_EXTRA_TALL_COL_SPAN = 1;
+constexpr char CARD_SIZE_EXTRA_WIDE_TOKEN = 'x';
+constexpr int CARD_SIZE_EXTRA_WIDE_ROW_SPAN = 1;
+constexpr int CARD_SIZE_EXTRA_WIDE_COL_SPAN = 3;
+
+inline bool card_span_matches(int row_span, int col_span, int expected_rows, int expected_cols) {
+  return row_span == expected_rows && col_span == expected_cols;
+}
+
+inline bool card_span_is_single(int row_span, int col_span) {
+  return card_span_matches(row_span, col_span, CARD_SIZE_SINGLE_ROW_SPAN, CARD_SIZE_SINGLE_COL_SPAN);
+}
+
+inline bool card_span_is_wide(int row_span, int col_span) {
+  return card_span_matches(row_span, col_span, CARD_SIZE_WIDE_ROW_SPAN, CARD_SIZE_WIDE_COL_SPAN);
+}
+
+inline bool card_span_is_large(int row_span, int col_span) {
+  return card_span_matches(row_span, col_span, CARD_SIZE_LARGE_ROW_SPAN, CARD_SIZE_LARGE_COL_SPAN);
+}
+
 inline void grid_token_spans(char suffix, int &row_span, int &col_span) {
-  row_span = 1;
-  col_span = 1;
-  if (suffix == 'd') row_span = 2;
-  else if (suffix == 'w') col_span = 2;
-  else if (suffix == 'b') { row_span = 2; col_span = 2; }
-  else if (suffix == 't') row_span = 3;
-  else if (suffix == 'x') col_span = 3;
+  row_span = CARD_SIZE_SINGLE_ROW_SPAN;
+  col_span = CARD_SIZE_SINGLE_COL_SPAN;
+  if (suffix == CARD_SIZE_TALL_TOKEN) {
+    row_span = CARD_SIZE_TALL_ROW_SPAN;
+    col_span = CARD_SIZE_TALL_COL_SPAN;
+  } else if (suffix == CARD_SIZE_WIDE_TOKEN) {
+    row_span = CARD_SIZE_WIDE_ROW_SPAN;
+    col_span = CARD_SIZE_WIDE_COL_SPAN;
+  } else if (suffix == CARD_SIZE_LARGE_TOKEN) {
+    row_span = CARD_SIZE_LARGE_ROW_SPAN;
+    col_span = CARD_SIZE_LARGE_COL_SPAN;
+  } else if (suffix == CARD_SIZE_EXTRA_TALL_TOKEN) {
+    row_span = CARD_SIZE_EXTRA_TALL_ROW_SPAN;
+    col_span = CARD_SIZE_EXTRA_TALL_COL_SPAN;
+  } else if (suffix == CARD_SIZE_EXTRA_WIDE_TOKEN) {
+    row_span = CARD_SIZE_EXTRA_WIDE_ROW_SPAN;
+    col_span = CARD_SIZE_EXTRA_WIDE_COL_SPAN;
+  }
 }
 
 inline bool grid_token_has_span_suffix(char suffix) {
-  return suffix == 'd' || suffix == 'w' || suffix == 'b' ||
-    suffix == 't' || suffix == 'x';
+  return suffix == CARD_SIZE_TALL_TOKEN || suffix == CARD_SIZE_WIDE_TOKEN ||
+    suffix == CARD_SIZE_LARGE_TOKEN || suffix == CARD_SIZE_EXTRA_TALL_TOKEN ||
+    suffix == CARD_SIZE_EXTRA_WIDE_TOKEN;
 }
 
 // Parse "1,2d,3w,4b,5t,6x,..." into positions + row/column spans
@@ -186,7 +232,7 @@ inline void set_grid_card_cell(lv_obj_t *btn,
   lv_grid_align_t row_align = row_span > 1 ? LV_GRID_ALIGN_START : LV_GRID_ALIGN_STRETCH;
   lv_obj_set_grid_cell(btn, col_align, col, col_span, row_align, row, row_span);
 
-  if (!grid || (col_span == 1 && row_span == 1)) return;
+  if (!grid || card_span_is_single(row_span, col_span)) return;
   lv_coord_t width = grid_track_span_size(
     lv_obj_get_width(grid),
     lv_obj_get_style_pad_left(grid, LV_PART_MAIN),

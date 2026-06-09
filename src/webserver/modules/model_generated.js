@@ -28,6 +28,13 @@ var EspControlModel = (() => {
     BACKUP_CONFIG_VERSION: () => BACKUP_CONFIG_VERSION,
     BACKUP_FORMAT: () => BACKUP_FORMAT,
     CARD_CONFIG_FIELDS: () => CARD_CONFIG_FIELDS,
+    CARD_SIZE_DEFINITIONS: () => CARD_SIZE_DEFINITIONS,
+    CARD_SIZE_EXTRA_TALL: () => CARD_SIZE_EXTRA_TALL,
+    CARD_SIZE_EXTRA_WIDE: () => CARD_SIZE_EXTRA_WIDE,
+    CARD_SIZE_LARGE: () => CARD_SIZE_LARGE,
+    CARD_SIZE_SINGLE: () => CARD_SIZE_SINGLE,
+    CARD_SIZE_TALL: () => CARD_SIZE_TALL,
+    CARD_SIZE_WIDE: () => CARD_SIZE_WIDE,
     applySpans: () => applySpans,
     backLabelFromOrder: () => backLabelFromOrder,
     backOrderToken: () => backOrderToken,
@@ -36,6 +43,8 @@ var EspControlModel = (() => {
     backupSource: () => backupSource,
     buildSubpageGrid: () => buildSubpageGrid,
     cardConfigChanged: () => cardConfigChanged,
+    cardSizeClass: () => cardSizeClass,
+    cardSizeDefinition: () => cardSizeDefinition,
     chooseSerializedSubpageConfig: () => chooseSerializedSubpageConfig,
     clearSpans: () => clearSpans,
     cloneCardConfig: () => cloneCardConfig,
@@ -191,20 +200,55 @@ var EspControlModel = (() => {
   }
 
   // src/webserver/model/grid.ts
+  var CARD_SIZE_SINGLE = 1;
+  var CARD_SIZE_TALL = 2;
+  var CARD_SIZE_WIDE = 3;
+  var CARD_SIZE_LARGE = 4;
+  var CARD_SIZE_EXTRA_TALL = 5;
+  var CARD_SIZE_EXTRA_WIDE = 6;
+  var CARD_SIZE_SINGLE_DEFINITION = {
+    size: CARD_SIZE_SINGLE,
+    token: "",
+    rowSpan: 1,
+    colSpan: 1,
+    className: ""
+  };
+  var CARD_SIZE_DEFINITIONS = [
+    CARD_SIZE_SINGLE_DEFINITION,
+    { size: CARD_SIZE_TALL, token: "d", rowSpan: 2, colSpan: 1, className: "sp-btn-double" },
+    { size: CARD_SIZE_WIDE, token: "w", rowSpan: 1, colSpan: 2, className: "sp-btn-wide" },
+    { size: CARD_SIZE_LARGE, token: "b", rowSpan: 2, colSpan: 2, className: "sp-btn-big" },
+    { size: CARD_SIZE_EXTRA_TALL, token: "t", rowSpan: 3, colSpan: 1, className: "sp-btn-extra-tall" },
+    { size: CARD_SIZE_EXTRA_WIDE, token: "x", rowSpan: 1, colSpan: 3, className: "sp-btn-extra-wide" }
+  ];
   function copySizes(sizes) {
     return { ...sizes || {} };
   }
+  function cardSizeDefinition(size) {
+    const normalized = size || CARD_SIZE_SINGLE;
+    for (const definition of CARD_SIZE_DEFINITIONS) {
+      if (definition.size === normalized) return definition;
+    }
+    return CARD_SIZE_SINGLE_DEFINITION;
+  }
   function sizeFromToken(token) {
-    return token === "d" ? 2 : token === "w" ? 3 : token === "b" ? 4 : token === "t" ? 5 : token === "x" ? 6 : 1;
+    const normalized = token || "";
+    for (const definition of CARD_SIZE_DEFINITIONS) {
+      if (definition.token === normalized) return definition.size;
+    }
+    return CARD_SIZE_SINGLE;
   }
   function sizeToken(size) {
-    return size === 4 ? "b" : size === 2 ? "d" : size === 3 ? "w" : size === 5 ? "t" : size === 6 ? "x" : "";
+    return cardSizeDefinition(size).token;
   }
   function sizeRowSpan(size) {
-    return size === 5 ? 3 : size === 2 || size === 4 ? 2 : 1;
+    return cardSizeDefinition(size).rowSpan;
   }
   function sizeColSpan(size) {
-    return size === 6 ? 3 : size === 3 || size === 4 ? 2 : 1;
+    return cardSizeDefinition(size).colSpan;
+  }
+  function cardSizeClass(size) {
+    return cardSizeDefinition(size).className;
   }
   function coveredCells(pos, size, _maxSlots, gridCols, includeOrigin) {
     const cells = [];
