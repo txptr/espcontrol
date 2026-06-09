@@ -115,6 +115,31 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
       cinfo.scale_denom = 1;
       jpeg_calc_output_dimensions(&cinfo);
     }
+    int max_decode_dim = this->image_->get_max_decode_dim();
+    int target_selected_w = static_cast<int>(cinfo.output_width);
+    int target_selected_h = static_cast<int>(cinfo.output_height);
+    int target_selected_max = target_selected_w > target_selected_h ? target_selected_w : target_selected_h;
+    if (max_decode_dim > 0 && target_selected_max > max_decode_dim) {
+      constexpr unsigned int capped_denoms[] = {1, 2, 4, 8};
+      unsigned int selected_denom = 8;
+      for (unsigned int denom : capped_denoms) {
+        cinfo.scale_num = 1;
+        cinfo.scale_denom = denom;
+        jpeg_calc_output_dimensions(&cinfo);
+        int output_w = static_cast<int>(cinfo.output_width);
+        int output_h = static_cast<int>(cinfo.output_height);
+        int output_max = output_w > output_h ? output_w : output_h;
+        if (output_max <= max_decode_dim) {
+          selected_denom = denom;
+          break;
+        }
+      }
+      cinfo.scale_num = 1;
+      cinfo.scale_denom = selected_denom;
+      jpeg_calc_output_dimensions(&cinfo);
+      ESP_LOGD(TAG, "Capped JPEG decode size at %dpx using 1/%u IDCT scale",
+               max_decode_dim, selected_denom);
+    }
   } else {
     jpeg_calc_output_dimensions(&cinfo);
   }

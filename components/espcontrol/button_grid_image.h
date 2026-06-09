@@ -19,6 +19,8 @@ constexpr uint8_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;
 constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;
 constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;
+constexpr size_t IMAGE_CARD_HA_ATTRIBUTE_FREE_MIN_BYTES = 10 * 1024;
+constexpr size_t IMAGE_CARD_HA_ATTRIBUTE_LARGEST_MIN_BYTES = 3 * 1024;
 constexpr const char *IMAGE_CARD_LOADING_ICON = "\U000F02E9";
 
 struct ImageCardCtx {
@@ -34,6 +36,7 @@ struct ImageCardCtx {
   std::string base_url;
   std::function<std::string()> base_url_provider;
   std::string source_url;
+  std::string pending_picture;
   std::string url;
   std::string modal_url;
   std::string access_token;
@@ -92,6 +95,7 @@ inline bool image_card_apply_modal_geometry(
   esphome::artwork_image::ArtworkImage *image,
   lv_coord_t *target_width = nullptr,
   lv_coord_t *target_height = nullptr);
+inline bool image_card_other_download_busy(ImageCardCtx *ctx);
 inline bool image_card_queue_modal_source_request(ImageCardCtx *ctx);
 inline void image_card_schedule_source_refresh(ImageCardCtx *ctx, uint32_t delay_ms,
                                                const char *reason);
@@ -458,6 +462,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].base_url.clear();
     contexts[i].base_url_provider = nullptr;
     contexts[i].source_url.clear();
+    contexts[i].pending_picture.clear();
     contexts[i].url.clear();
     contexts[i].access_token.clear();
     contexts[i].refresh_interval_ms = 0;
@@ -940,6 +945,8 @@ inline void image_card_schedule_picture_retry(ImageCardCtx *ctx, uint32_t delay_
 
 inline void image_card_request_picture(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || ctx->entity_id.empty()) return;
+  const std::string entity_id = ctx->entity_id;
+  std::string proxy_path = image_card_entity_proxy_path(entity_id);
   if (!ha_api_connected()) {
     if (image_card_startup_retry_active(ctx)) {
       image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
@@ -947,8 +954,12 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
     }
     return;
   }
-  const std::string entity_id = ctx->entity_id;
-  std::string proxy_path = image_card_entity_proxy_path(entity_id);
+  if (!ctx->pending_picture.empty() && !image_card_base_url(ctx).empty()) {
+    std::string pending = ctx->pending_picture;
+    ctx->pending_picture.clear();
+    image_card_handle_picture(ctx, esphome::StringRef(pending));
+    return;
+  }
   if (!proxy_path.empty()) {
     if (image_card_base_url(ctx).empty()) {
       image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
@@ -968,15 +979,19 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
         [ctx, entity_id, generation, proxy_path](esphome::StringRef token_ref) {
           if (!image_card_context_current(ctx, entity_id, generation)) return;
           std::string token = string_ref_limited(token_ref, 512);
+          ESP_LOGD("image_card", "Access token response for %s: len=%u usable=%d",
+                   entity_id.c_str(), (unsigned) token.size(),
+                   !(token.empty() || token == "unknown" || token == "unavailable"));
           if (token.empty() || token == "unknown" || token == "unavailable") {
-            image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
-            image_card_set_loading_state(ctx, "Loading", true);
+            image_card_handle_picture(ctx, esphome::StringRef(""));
             return;
           }
           ctx->access_token = token;
           std::string authed_path = image_card_proxy_path_with_token(proxy_path, token);
           image_card_handle_picture(ctx, esphome::StringRef(authed_path));
-        })
+        }),
+      IMAGE_CARD_HA_ATTRIBUTE_FREE_MIN_BYTES,
+      IMAGE_CARD_HA_ATTRIBUTE_LARGEST_MIN_BYTES
     );
     if (!requested) {
       image_card_schedule_picture_retry(
@@ -994,7 +1009,9 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
       [ctx, entity_id, generation](esphome::StringRef picture) {
         if (!image_card_context_current(ctx, entity_id, generation)) return;
         image_card_handle_picture(ctx, picture);
-      })
+      }),
+    IMAGE_CARD_HA_ATTRIBUTE_FREE_MIN_BYTES,
+    IMAGE_CARD_HA_ATTRIBUTE_LARGEST_MIN_BYTES
   );
   if (!requested && (ha_api_connected() || image_card_startup_retry_active(ctx))) {
     ESP_LOGD("image_card", "Queued entity_picture retry for %s: connected=%d state_connected=%d",
@@ -1035,9 +1052,24 @@ inline void image_card_schedule_next_refresh(ImageCardCtx *ctx, uint32_t now = e
   ctx->next_refresh_ms = now + ctx->refresh_interval_ms;
 }
 
+inline bool image_card_other_download_busy(ImageCardCtx *ctx) {
+  ImageCardCtx *contexts = image_card_contexts();
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
+    ImageCardCtx *other = &contexts[i];
+    if (!other->active || other == ctx) continue;
+    if (other->image && other->image->is_updating()) return true;
+    if (image_card_has_separate_modal_image(other) && other->modal_image->is_updating()) return true;
+  }
+  return false;
+}
+
 inline void image_card_request_source_url(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->image || ctx->source_url.empty()) return;
   uint32_t now = esphome::millis();
+  if (image_card_other_download_busy(ctx)) {
+    ctx->next_download_retry_ms = now + IMAGE_CARD_API_RETRY_INTERVAL_MS;
+    return;
+  }
   if (image_card_modal_active_for(ctx)) {
     ctx->next_download_retry_ms = now + IMAGE_CARD_MODAL_REFRESH_DELAY_MS;
     ESP_LOGD("image_card", "Deferring image refresh while modal is open for %s", ctx->entity_id.c_str());
@@ -1047,7 +1079,12 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   lv_coord_t height = 0;
   esphome::artwork_image::ImageResizeMode resize_mode =
     esphome::artwork_image::ImageResizeMode::COVER;
-  if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return;
+  if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) {
+    ESP_LOGD("image_card", "Deferring image download until layout is ready for %s",
+             ctx->entity_id.c_str());
+    ctx->next_download_retry_ms = now + IMAGE_CARD_RETRY_INTERVAL_MS;
+    return;
+  }
   lv_obj_t *loading = image_card_loading_widget(ctx->widget);
   image_card_position_widget(ctx->btn, loading);
   image_card_refresh_loading_layout(loading);
@@ -1279,6 +1316,11 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
 inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef picture) {
   if (!ctx || !ctx->active || !ctx->image) return;
   std::string raw = string_ref_limited(picture, 4096);
+  ESP_LOGD("image_card", "Picture path for %s: len=%u proxy=%d token=%d base=%d",
+           ctx->entity_id.c_str(), (unsigned) raw.size(),
+           image_card_home_assistant_proxy_url(raw),
+           raw.find("token=") != std::string::npos,
+           !image_card_base_url(ctx).empty());
   std::string base_url = image_card_base_url(ctx);
   std::string url = image_card_join_url(base_url, raw);
   if (url.empty()) {
@@ -1286,6 +1328,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
     if (!proxy_path.empty() && base_url.empty()) {
       ESP_LOGD("image_card", "Waiting for Home Assistant base URL before loading %s",
                ctx->entity_id.c_str());
+      if (!raw.empty()) ctx->pending_picture = raw;
       image_card_hide(ctx);
       image_card_set_loading_state(ctx, "Loading", true);
       image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);

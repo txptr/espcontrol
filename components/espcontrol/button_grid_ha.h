@@ -245,9 +245,11 @@ inline bool ha_subscribe_attribute(const std::string &entity_id,
 
 inline bool ha_get_attribute(const std::string &entity_id,
                              const std::string &attribute,
-                             HomeAssistantStateCallback callback) {
+                             HomeAssistantStateCallback callback,
+                             size_t min_free = HA_ACTION_INTERNAL_FREE_MIN_BYTES,
+                             size_t min_largest = HA_ACTION_INTERNAL_LARGEST_MIN_BYTES) {
   if (!ha_api_available() || entity_id.empty() || !callback) return false;
-  if (!ha_internal_heap_available("Home Assistant attribute request")) return false;
+  if (!ha_internal_heap_available("Home Assistant attribute request", min_free, min_largest)) return false;
   auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
   esphome::api::global_api_server->get_home_assistant_state(
     entity_id, attribute,

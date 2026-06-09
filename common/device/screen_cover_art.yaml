@@ -123,6 +123,9 @@ api:
         ESP_LOGI("cover_art", "Using Home Assistant artwork base URL: %s",
                  id(cover_art_home_assistant_base_url).c_str());
         refresh_image_cards();
+    - delay: 1s
+    - lambda: |-
+        if (ha_api_connected()) refresh_image_cards();
     - delay: 2s
     - script.execute: cover_art_resubscribe
 

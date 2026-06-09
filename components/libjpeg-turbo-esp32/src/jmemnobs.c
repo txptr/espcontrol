@@ -8,9 +8,9 @@
  * For conditions of distribution and use, see the accompanying README.ijg
  * file.
  *
- * ESP32 modification: Route large allocations to PSRAM via heap_caps_malloc.
- * This is required for progressive JPEG decoding which needs multi-MB
- * coefficient buffers that don't fit in internal SRAM.
+ * ESP32 modification: Route JPEG pool allocations to PSRAM via
+ * heap_caps_malloc. This is required on memory-constrained ESP32 displays,
+ * where even baseline JPEG decoding can exhaust the small internal SRAM heap.
  */
 
 #define JPEG_INTERNALS
@@ -31,13 +31,32 @@
 GLOBAL(void *)
 jpeg_get_small(j_common_ptr cinfo, size_t sizeofobject)
 {
+#ifdef ESP_PLATFORM
+  void *p = heap_caps_malloc(sizeofobject, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (p == NULL)
+    p = heap_caps_malloc(sizeofobject, MALLOC_CAP_8BIT);
+  if (p == NULL) {
+    printf("[E][jpeg_mem] small alloc failed: size=%u spiram_free=%u spiram_largest=%u 8bit_free=%u 8bit_largest=%u\n",
+           (unsigned)sizeofobject,
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+  }
+  return p;
+#else
   return (void *)MALLOC(sizeofobject);
+#endif
 }
 
 GLOBAL(void)
 jpeg_free_small(j_common_ptr cinfo, void *object, size_t sizeofobject)
 {
+#ifdef ESP_PLATFORM
+  heap_caps_free(object);
+#else
   free(object);
+#endif
 }
 
 
@@ -53,7 +72,7 @@ jpeg_get_large(j_common_ptr cinfo, size_t sizeofobject)
 #ifdef ESP_PLATFORM
   void *p = heap_caps_malloc(sizeofobject, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (p == NULL)
-    p = (void *)MALLOC(sizeofobject);
+    p = heap_caps_malloc(sizeofobject, MALLOC_CAP_8BIT);
   return p;
 #else
   return (void *)MALLOC(sizeofobject);

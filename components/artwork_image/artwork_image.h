@@ -76,6 +76,8 @@ class ArtworkImage : public PollingComponent,
   /** Stop any in-flight download/decode while keeping the last completed image buffer available. */
   void cancel_update();
   const std::string &get_url() const { return this->url_; }
+  bool is_updating() const { return this->is_busy_(); }
+  int get_max_decode_dim() const { return this->max_decode_dim_; }
 
   void set_target_size(int width, int height) {
     if (width <= 0 || height <= 0) return;
@@ -216,6 +218,7 @@ class ArtworkImage : public PollingComponent,
   image::Image *placeholder_{nullptr};
 
   std::string url_{""};
+  int max_decode_dim_{0};
 
   std::vector<std::pair<std::string, TemplatableValue<std::string> > > request_headers_;
 
