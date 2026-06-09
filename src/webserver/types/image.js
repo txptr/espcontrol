@@ -1,13 +1,13 @@
 // Read-only Home Assistant camera/image entity card.
 var IMAGE_CARD_METADATA = {
   entity: {
-    label: "Image Entity",
+    label: "Camera Entity",
     idSuffix: "entity",
-    placeholder: "e.g. camera.front_door or image.front_door",
+    placeholder: "e.g. camera.front_door",
     domains: function () { return cardContractDomains("image"); },
     bindName: "entity",
     rerender: true,
-    requiredMessage: "Add a camera or image entity before saving.",
+    requiredMessage: "Add a camera entity before saving.",
   },
 };
 
