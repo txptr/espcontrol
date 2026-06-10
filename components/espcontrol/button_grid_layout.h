@@ -233,6 +233,7 @@ inline void set_grid_card_cell(lv_obj_t *btn,
   lv_obj_set_grid_cell(btn, col_align, col, col_span, row_align, row, row_span);
 
   if (!grid || card_span_is_single(row_span, col_span)) return;
+  lv_obj_update_layout(grid);
   lv_coord_t width = grid_track_span_size(
     lv_obj_get_width(grid),
     lv_obj_get_style_pad_left(grid, LV_PART_MAIN),
