@@ -688,10 +688,10 @@ number:
     name: "${entity_screen_saver_daytime_clock_brightness}"
     internal: true
     id: clock_brightness_day
-    min_value: 1
+    min_value: ${screen_saver_clock_min_brightness}
     max_value: 100
     step: 1
-    initial_value: 35
+    initial_value: ${screen_saver_clock_default_brightness}
     restore_value: true
     optimistic: true
     unit_of_measurement: "%"
@@ -712,10 +712,10 @@ number:
     name: "${entity_screen_saver_nighttime_clock_brightness}"
     internal: true
     id: clock_brightness_night
-    min_value: 1
+    min_value: ${screen_saver_clock_min_brightness}
     max_value: 100
     step: 1
-    initial_value: 35
+    initial_value: ${screen_saver_clock_default_brightness}
     restore_value: true
     optimistic: true
     unit_of_measurement: "%"
@@ -797,10 +797,10 @@ number:
     name: "${entity_screen_saver_clock_brightness}"
     internal: true
     id: clock_brightness
-    min_value: 1
+    min_value: ${screen_saver_clock_min_brightness}
     max_value: 100
     step: 1
-    initial_value: 35
+    initial_value: ${screen_saver_clock_default_brightness}
     restore_value: true
     optimistic: true
     unit_of_measurement: "%"
@@ -812,11 +812,14 @@ number:
             if (!id(clock_brightness_legacy_sync_ready)) return;
             auto clamp_clock_pct = [](float pct, float fallback) -> float {
               if (std::isnan(pct) || pct <= 0.0f) pct = fallback;
-              if (pct < 1.0f) pct = 1.0f;
+              if (pct < ${screen_saver_clock_min_brightness}.0f) {
+                pct = ${screen_saver_clock_min_brightness}.0f;
+              }
               if (pct > 100.0f) pct = 100.0f;
               return pct;
             };
-            float legacy_pct = clamp_clock_pct(id(clock_brightness).state, 35.0f);
+            float legacy_pct = clamp_clock_pct(
+              id(clock_brightness).state, ${screen_saver_clock_default_brightness}.0f);
             float previous_pct = clamp_clock_pct(
               id(clock_brightness_legacy_last_level), legacy_pct);
             if (legacy_pct == previous_pct) return;

@@ -93,18 +93,24 @@ esphome:
 
           auto clamp_clock_pct = [](float pct, float fallback) -> float {
             if (std::isnan(pct) || pct <= 0.0f) pct = fallback;
-            if (pct < 1.0f) pct = 1.0f;
+            if (pct < ${screen_saver_clock_min_brightness}.0f) {
+              pct = ${screen_saver_clock_min_brightness}.0f;
+            }
             if (pct > 100.0f) pct = 100.0f;
             return pct;
           };
-          float legacy_pct = clamp_clock_pct(id(clock_brightness).state, 35.0f);
+          float legacy_pct = clamp_clock_pct(
+            id(clock_brightness).state, ${screen_saver_clock_default_brightness}.0f);
           id(clock_brightness_legacy_last_level) = legacy_pct;
 
           if (!id(clock_brightness_migrated)) {
-            float day_pct = clamp_clock_pct(id(clock_brightness_day).state, 35.0f);
-            float night_pct = clamp_clock_pct(id(clock_brightness_night).state, 35.0f);
+            float day_pct = clamp_clock_pct(
+              id(clock_brightness_day).state, ${screen_saver_clock_default_brightness}.0f);
+            float night_pct = clamp_clock_pct(
+              id(clock_brightness_night).state, ${screen_saver_clock_default_brightness}.0f);
 
-            if (day_pct == 35.0f && night_pct == 35.0f) {
+            if (day_pct == ${screen_saver_clock_default_brightness}.0f &&
+                night_pct == ${screen_saver_clock_default_brightness}.0f) {
               auto day_call = id(clock_brightness_day).make_call();
               day_call.set_value(legacy_pct);
               day_call.perform();
@@ -652,22 +658,32 @@ script:
       - lambda: |-
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
 
-          float pct = 35.0f;
+          float pct = ${screen_saver_clock_default_brightness}.0f;
           if (id(screen_schedule_asleep) &&
               screen_schedule_clock_mode(id(schedule_mode).current_option())) {
             pct = id(schedule_clock_brightness).state;
-            if (std::isnan(pct) || pct <= 0.0f) pct = 10.0f;
-            if (pct < 1.0f) pct = 1.0f;
+            if (std::isnan(pct) || pct <= 0.0f) {
+              pct = ${screen_schedule_clock_default_brightness}.0f;
+            }
+            if (pct < ${screen_schedule_clock_min_brightness}.0f) {
+              pct = ${screen_schedule_clock_min_brightness}.0f;
+            }
             if (pct > 100.0f) pct = 100.0f;
           } else {
             float day_pct = id(clock_brightness_day).state;
-            if (std::isnan(day_pct) || day_pct <= 0.0f) day_pct = 35.0f;
-            if (day_pct < 1.0f) day_pct = 1.0f;
+            if (std::isnan(day_pct) || day_pct <= 0.0f) {
+              day_pct = ${screen_saver_clock_default_brightness}.0f;
+            }
+            if (day_pct < ${screen_saver_clock_min_brightness}.0f) {
+              day_pct = ${screen_saver_clock_min_brightness}.0f;
+            }
             if (day_pct > 100.0f) day_pct = 100.0f;
 
             float night_pct = id(clock_brightness_night).state;
             if (std::isnan(night_pct) || night_pct <= 0.0f) night_pct = day_pct;
-            if (night_pct < 1.0f) night_pct = 1.0f;
+            if (night_pct < ${screen_saver_clock_min_brightness}.0f) {
+              night_pct = ${screen_saver_clock_min_brightness}.0f;
+            }
             if (night_pct > 100.0f) night_pct = 100.0f;
 
             bool is_day = id(last_is_daytime);

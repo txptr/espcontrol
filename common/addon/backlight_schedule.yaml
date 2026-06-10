@@ -316,10 +316,10 @@ number:
     name: "${entity_screen_schedule_clock_brightness}"
     internal: true
     id: schedule_clock_brightness
-    min_value: 1
+    min_value: ${screen_schedule_clock_min_brightness}
     max_value: 100
     step: 1
-    initial_value: 10
+    initial_value: ${screen_schedule_clock_default_brightness}
     optimistic: true
     restore_value: true
     unit_of_measurement: "%"
