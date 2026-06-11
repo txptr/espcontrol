@@ -1249,9 +1249,7 @@ inline bool image_card_request_modal_source_url(ImageCardCtx *ctx) {
   ctx->modal_image->set_resize_mode(
     ctx->modal_fit ? esphome::artwork_image::ImageResizeMode::FIT
                    : esphome::artwork_image::ImageResizeMode::COVER);
-  if (!image_card_modal_has_tile_fallback(ctx)) {
-    image_card_show_modal_loading(ctx, "Loading");
-  }
+  image_card_show_modal_loading(ctx, "Loading");
   ESP_LOGI("image_card", "Downloading modal camera image for %s", ctx->entity_id.c_str());
   int max_source_dim = width > height ? width : height;
   std::string effective_url = ctx->modal_image->request_update_url(ctx->modal_url, max_source_dim);
@@ -1290,9 +1288,7 @@ inline bool image_card_queue_modal_source_request(ImageCardCtx *ctx) {
     return false;
   }
   ImageCardModalUi &ui = image_card_modal_ui();
-  if (!image_card_modal_has_tile_fallback(ctx)) {
-    image_card_show_modal_loading(ctx, "Loading");
-  }
+  image_card_show_modal_loading(ctx, "Loading");
   image_card_cancel_modal_request_timer();
   ui.request_timer = lv_timer_create(
     image_card_modal_request_timer_cb, IMAGE_CARD_MODAL_REQUEST_DELAY_MS, ctx);
