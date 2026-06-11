@@ -952,6 +952,15 @@ script:
     mode: restart
     then:
       - script.stop: cover_art_delay_timer
+      - script.stop: backlight_fade_current_ui_to_black
+      - script.stop: backlight_sleep_display_off
+      - script.stop: screensaver_sleep_timer
+      - script.stop: screensaver_sleep_sensor
+      - script.stop: screensaver_sleep_display_off
+      - script.stop: show_dimmed_view
+      - script.stop: screensaver_dimmed_refresh_brightness
+      - script.stop: show_clock_view
+      - script.stop: clock_screensaver_refresh_brightness
       - script.execute: cover_art_sync_track_text
       - lambda: |-
           if (id(cover_art_loaded_url).empty()) {
@@ -975,6 +984,7 @@ script:
       - lvgl.widget.hide: dim_screensaver_touch_guard
       - lvgl.widget.show: cover_art_screensaver
       - lambda: 'lv_obj_move_foreground(id(cover_art_screensaver));'
+      - script.execute: backlight_apply_brightness
       - script.execute: cover_art_apply_responsive_layout
       - script.execute: cover_art_show_track_overlay
       - script.execute: cover_art_use_cached_artwork
