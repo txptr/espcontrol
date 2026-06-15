@@ -649,6 +649,7 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
   if (!ctx->supports_tilt && ui.tab == CoverControlTab::TILT) {
     ui.tab = CoverControlTab::POSITION;
   }
+  cover_control_apply_tab_visibility();
   ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
 
   lv_coord_t tab_size = layout.back_size * 7 / 10;
@@ -698,8 +699,10 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
   lv_coord_t content_w = tab_frame_w;
   if (content_w >= content_h) content_w = content_h * 3 / 4;
   cover_control_layout_slider(ui.position_slider, content_w, content_h, content_center_y);
+  lv_obj_update_layout(ui.panel);
   cover_control_update_position_fill(ctx->current_position);
   cover_control_layout_slider(ui.tilt_slider, content_w, content_h, content_center_y);
+  lv_obj_update_layout(ui.panel);
   cover_control_update_slider_fill_color(ui.tilt_slider, ctx, ctx->current_tilt);
   cover_control_update_slider_handle(ui.tilt_slider, ui.tilt_handle, ctx->current_tilt);
 
@@ -947,7 +950,6 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   }, LV_EVENT_PRESS_LOST, nullptr);
 
   cover_control_layout_modal(ctx);
-  cover_control_apply_tab_visibility();
   lv_obj_move_foreground(ui.overlay);
 }
 
