@@ -75,9 +75,13 @@ espcontrol_web_username: "admin"
 espcontrol_web_password: "choose-a-strong-password"
 ```
 
-Then add the `web_server_auth` package to your EspControl device YAML:
+Then point the EspControl web auth substitutions at those secrets and add the `web_server_auth` package to your EspControl device YAML:
 
 ```yaml
+substitutions:
+  espcontrol_web_username: !secret espcontrol_web_username
+  espcontrol_web_password: !secret espcontrol_web_password
+
 packages:
   setup:
     url: https://github.com/jtenniswood/espcontrol/
@@ -91,7 +95,15 @@ packages:
 
 After saving, validate the device and install the firmware again. The next time you open the display address in a browser, it will ask for the username and password.
 
-Use a different password for each display. This protects the local web page, but it is not a replacement for normal network security, so do not expose the display directly to the internet.
+Use a different password for each display. For example, one display can point the substitutions at hallway secrets and another can point them at office secrets:
+
+```yaml
+substitutions:
+  espcontrol_web_username: !secret espcontrol_hallway__web_username
+  espcontrol_web_password: !secret espcontrol_hallway__web_password
+```
+
+This protects the local web page, but it is not a replacement for normal network security, so do not expose the display directly to the internet.
 
 ## Advanced: Ethernet Options
 
