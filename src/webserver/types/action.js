@@ -255,6 +255,7 @@ registerButtonType("action", {
       var confirmOn = actionScriptConfirmationEnabled(b);
       var confirmToggle = helpers.renderCardOptionToggle(panel, b, helpers, ACTION_CARD_METADATA.confirmationToggle);
       var confirmSection = condField();
+      confirmSection.classList.add("sp-action-confirm-section");
       if (confirmOn) confirmSection.classList.add("sp-visible");
 
       var messageField = helpers.renderCardTextField(confirmSection, b, helpers, ACTION_CARD_METADATA.confirmationMessage);
