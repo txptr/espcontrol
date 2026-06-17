@@ -1038,10 +1038,13 @@ void ArtworkImage::finish_download_() {
     this->fail_download_();
     return;
   }
+  const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   this->log_state_("download-complete");
   ESP_LOGD(TAG, "Image fully downloaded, read %zu bytes, width/height = %d/%d",
-           this->downloader_ ? this->downloader_->get_bytes_read() : 0, this->width_, this->height_);
+           bytes_read, this->width_, this->height_);
   ESP_LOGD(TAG, "Total time: %" PRIu32 "s", (uint32_t) (::time(nullptr) - this->start_time_));
+  this->end_connection_();
+  this->log_state_("download-resources-released");
   App.feed_wdt();
 #ifdef USE_LVGL
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
@@ -1052,7 +1055,6 @@ void ArtworkImage::finish_download_() {
 #endif
   this->log_state_("lvgl-descriptor-ready");
   App.feed_wdt();
-  this->end_connection_();
   this->download_finished_callback_.call(false);
   App.feed_wdt();
   this->log_state_("download-callback-finished");
