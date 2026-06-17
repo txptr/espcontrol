@@ -477,7 +477,7 @@ script:
                 id: cover_art_media_playing
                 value: 'true'
             - globals.set:
-                id: cover_art_manual_wake_ms
+                id: manual_wake_ms
                 value: '0'
             - script.execute: cover_art_resubscribe
             - script.execute: show_cover_art_view
