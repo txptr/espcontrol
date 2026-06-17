@@ -149,9 +149,10 @@ struct LightControlCtx {
 };
 
 enum class LightControlTab : uint8_t {
-  BRIGHTNESS = 0,
-  TEMPERATURE = 1,
-  COLOR = 2,
+  POWER = 0,
+  BRIGHTNESS = 1,
+  TEMPERATURE = 2,
+  COLOR = 3,
 };
 
 struct LightColorPresetClick {
@@ -167,9 +168,13 @@ struct LightControlModalUi {
   lv_obj_t *panel = nullptr;
   lv_obj_t *back_btn = nullptr;
   lv_obj_t *tab_row = nullptr;
+  lv_obj_t *power_tab = nullptr;
   lv_obj_t *brightness_tab = nullptr;
   lv_obj_t *temperature_tab = nullptr;
   lv_obj_t *color_tab = nullptr;
+  lv_obj_t *power_group = nullptr;
+  lv_obj_t *power_on_btn = nullptr;
+  lv_obj_t *power_off_btn = nullptr;
   lv_obj_t *slider = nullptr;
   lv_obj_t *slider_fill = nullptr;
   lv_obj_t *slider_handle = nullptr;
@@ -178,7 +183,7 @@ struct LightControlModalUi {
   lv_obj_t *temp_slider_handle = nullptr;
   lv_obj_t *color_grid = nullptr;
   LightControlCtx *active = nullptr;
-  LightControlTab tab = LightControlTab::BRIGHTNESS;
+  LightControlTab tab = LightControlTab::POWER;
 };
 
 inline LightControlModalUi &light_control_modal_ui() {
@@ -238,7 +243,40 @@ inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
 }
 
 inline void light_control_apply_modal_power(LightControlCtx *ctx) {
-  (void) ctx;
+  LightControlModalUi &ui = light_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  lv_obj_t *on_label = ui.power_on_btn ? lv_obj_get_child(ui.power_on_btn, 0) : nullptr;
+  lv_obj_t *off_label = ui.power_off_btn ? lv_obj_get_child(ui.power_off_btn, 0) : nullptr;
+  if (ui.power_on_btn) {
+    lv_obj_set_style_bg_color(
+      ui.power_on_btn,
+      lv_color_hex(ctx->on ? ctx->accent_color : DARK_BACKGROUND_SECONDARY),
+      LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui.power_on_btn, ctx->on ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui.power_on_btn, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(ui.power_on_btn, 0, LV_PART_MAIN);
+  }
+  if (ui.power_off_btn) {
+    lv_obj_set_style_bg_color(
+      ui.power_off_btn,
+      lv_color_hex(ctx->on ? DARK_BACKGROUND_SECONDARY : 0xFFFFFF),
+      LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui.power_off_btn, ctx->on ? LV_OPA_TRANSP : LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui.power_off_btn, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(ui.power_off_btn, 0, LV_PART_MAIN);
+  }
+  if (on_label) {
+    lv_obj_set_style_text_color(
+      on_label,
+      lv_color_hex(ctx->on ? 0xFFFFFF : DARK_TEXT_MUTED),
+      LV_PART_MAIN);
+  }
+  if (off_label) {
+    lv_obj_set_style_text_color(
+      off_label,
+      lv_color_hex(ctx->on ? DARK_TEXT_MUTED : 0x000000),
+      LV_PART_MAIN);
+  }
 }
 
 inline int light_control_kelvin_to_pct(LightControlCtx *ctx, int kelvin) {
@@ -291,9 +329,14 @@ inline void light_control_apply_tab_visibility() {
   LightControlModalUi &ui = light_control_modal_ui();
   LightControlCtx *ctx = ui.active;
   if (!ctx) return;
+  bool show_power = ui.tab == LightControlTab::POWER;
   bool show_brightness = ui.tab == LightControlTab::BRIGHTNESS;
   bool show_temperature = ui.tab == LightControlTab::TEMPERATURE;
   bool show_color = ui.tab == LightControlTab::COLOR;
+  if (ui.power_group) {
+    if (show_power) lv_obj_clear_flag(ui.power_group, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.power_group, LV_OBJ_FLAG_HIDDEN);
+  }
   if (ui.slider) {
     if (show_brightness) lv_obj_clear_flag(ui.slider, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.slider, LV_OBJ_FLAG_HIDDEN);
@@ -306,9 +349,11 @@ inline void light_control_apply_tab_visibility() {
     if (show_color) lv_obj_clear_flag(ui.color_grid, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.color_grid, LV_OBJ_FLAG_HIDDEN);
   }
+  light_control_style_tab(ui.power_tab, show_power, ctx->accent_color);
   light_control_style_tab(ui.brightness_tab, show_brightness, ctx->accent_color);
   light_control_style_tab(ui.temperature_tab, show_temperature, ctx->accent_color);
   light_control_style_tab(ui.color_tab, show_color, ctx->accent_color);
+  light_control_apply_modal_power(ctx);
 }
 
 inline void light_control_layout_modal(LightControlCtx *ctx);
@@ -480,6 +525,67 @@ inline void light_control_style_slider(lv_obj_t *slider, uint32_t accent_color) 
   lv_obj_set_style_height(slider, 0, LV_PART_KNOB);
 }
 
+inline lv_obj_t *light_control_create_power_button(lv_obj_t *parent, const lv_font_t *font,
+                                                   int width_compensation_percent,
+                                                   bool turn_on) {
+  lv_obj_t *btn = lv_btn_create(parent);
+  if (!btn) return nullptr;
+  apply_width_compensation(btn, width_compensation_percent);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
+  control_modal_apply_pressed_fill(btn);
+  lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_t *label = lv_label_create(btn);
+  if (label) {
+    lv_label_set_text(label, find_icon("Power"));
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+    lv_obj_set_style_transform_zoom(label, 230, LV_PART_MAIN);
+    lv_obj_center(label);
+  }
+  lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+    bool turn_on = static_cast<bool>(reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
+    LightControlModalUi &ui = light_control_modal_ui();
+    if (!ui.active || !ui.active->available) return;
+    ui.active->on = turn_on;
+    light_control_apply_card_visual(ui.active);
+    light_control_apply_modal_power(ui.active);
+    if (turn_on) send_turn_on_action(ui.active->entity_id);
+    else send_turn_off_action(ui.active->entity_id);
+  }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(turn_on)));
+  return btn;
+}
+
+inline void light_control_layout_power(lv_obj_t *group, lv_obj_t *on_btn,
+                                       lv_obj_t *off_btn, lv_coord_t width,
+                                       lv_coord_t height, lv_coord_t center_y) {
+  if (!group) return;
+  lv_obj_set_size(group, width, height);
+  lv_obj_align(group, LV_ALIGN_CENTER, 0, center_y);
+  lv_coord_t radius = width / 4;
+  if (radius < 24) radius = 24;
+  if (radius > 46) radius = 46;
+  lv_obj_set_style_radius(group, radius, LV_PART_MAIN);
+  lv_obj_set_style_clip_corner(group, true, LV_PART_MAIN);
+  lv_coord_t button_h = height / 2;
+  if (on_btn) {
+    lv_obj_set_size(on_btn, width, button_h);
+    lv_obj_set_style_radius(on_btn, radius, LV_PART_MAIN);
+    lv_obj_align(on_btn, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_t *label = lv_obj_get_child(on_btn, 0);
+    if (label) lv_obj_center(label);
+  }
+  if (off_btn) {
+    lv_obj_set_size(off_btn, width, button_h);
+    lv_obj_set_style_radius(off_btn, radius, LV_PART_MAIN);
+    lv_obj_align(off_btn, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_t *label = lv_obj_get_child(off_btn, 0);
+    if (label) lv_obj_center(label);
+  }
+}
+
 inline void light_control_layout_modal(LightControlCtx *ctx) {
   LightControlModalUi &ui = light_control_modal_ui();
   if (!ctx || !ui.panel) return;
@@ -488,13 +594,23 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   lv_coord_t tab_size = layout.back_size * 7 / 10;
   if (tab_size < 48) tab_size = 48;
   if (tab_size > 68) tab_size = 68;
+  lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
+  constexpr int TAB_COUNT = 4;
   lv_coord_t selected_tab_size = tab_size + tab_size / 8;
   lv_coord_t tab_frame_pad = tab_size / 5;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
   lv_coord_t tab_gap = tab_size / 4;
-  lv_coord_t tabs_total_w = tab_size * 3 + tab_gap * 2;
+  lv_coord_t tabs_total_w = tab_size * TAB_COUNT + tab_gap * (TAB_COUNT - 1);
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
-  lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
+  while (tab_frame_w > max_tab_frame_w && tab_size > 40) {
+    tab_size--;
+    selected_tab_size = tab_size + tab_size / 8;
+    tab_frame_pad = tab_size / 5;
+    tab_frame_h = tab_size + tab_frame_pad * 2;
+    tab_gap = tab_size / 4;
+    tabs_total_w = tab_size * TAB_COUNT + tab_gap * (TAB_COUNT - 1);
+    tab_frame_w = tabs_total_w + tab_frame_pad * 2;
+  }
   if (tab_frame_w > max_tab_frame_w) tab_frame_w = max_tab_frame_w;
   lv_coord_t slider_w = control_modal_home_card_width(ctx->btn, layout);
   if (ui.tab_row) {
@@ -502,9 +618,9 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     lv_obj_set_style_radius(ui.tab_row, tab_frame_h / 2, LV_PART_MAIN);
     lv_obj_align(ui.tab_row, LV_ALIGN_TOP_MID, 0, layout.inset + 2);
   }
-  lv_obj_t *tabs[3] = {ui.brightness_tab, ui.temperature_tab, ui.color_tab};
+  lv_obj_t *tabs[TAB_COUNT] = {ui.power_tab, ui.brightness_tab, ui.temperature_tab, ui.color_tab};
   lv_coord_t first_tab_x = (tab_frame_w - tabs_total_w) / 2;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < TAB_COUNT; i++) {
     if (!tabs[i]) continue;
     bool active = (i == static_cast<int>(ui.tab));
     lv_coord_t tab_btn_size = active ? selected_tab_size : tab_size;
@@ -519,6 +635,9 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   lv_coord_t content_center_y = tab_frame_h / 2 + 12;
   lv_coord_t slider_h = layout.panel_h - layout.inset * 3 - tab_frame_h - 16;
   if (slider_h < 160) slider_h = layout.panel_h / 2;
+  light_control_layout_power(
+    ui.power_group, ui.power_on_btn, ui.power_off_btn, slider_w, slider_h, content_center_y);
+  light_control_apply_modal_power(ctx);
   light_control_layout_slider(ui.slider, slider_w, slider_h, content_center_y);
   lv_obj_update_layout(ui.panel);
   light_control_update_slider_fill(
@@ -572,6 +691,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
+  ui.tab = LightControlTab::POWER;
   if (!ui.panel) return;
 
   ui.tab_row = lv_obj_create(ui.panel);
@@ -581,6 +701,9 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_SCROLLABLE);
+  ui.power_tab = light_control_create_tab_button(
+    ui.tab_row, find_icon("Power"), ctx->icon_font,
+    LightControlTab::POWER, ctx->width_compensation_percent);
   ui.brightness_tab = light_control_create_tab_button(
     ui.tab_row, find_icon("Lightbulb"), ctx->icon_font,
     LightControlTab::BRIGHTNESS, ctx->width_compensation_percent);
@@ -590,6 +713,18 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.color_tab = light_control_create_tab_button(
     ui.tab_row, find_icon("Palette"), ctx->icon_font,
     LightControlTab::COLOR, ctx->width_compensation_percent);
+
+  ui.power_group = lv_obj_create(ui.panel);
+  lv_obj_set_style_bg_color(ui.power_group, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.power_group, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.power_group, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.power_group, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.power_group, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.power_group, LV_OBJ_FLAG_SCROLLABLE);
+  ui.power_on_btn = light_control_create_power_button(
+    ui.power_group, ctx->icon_font, ctx->width_compensation_percent, true);
+  ui.power_off_btn = light_control_create_power_button(
+    ui.power_group, ctx->icon_font, ctx->width_compensation_percent, false);
 
   ui.slider = lv_slider_create(ui.panel);
   light_control_style_slider(ui.slider, ctx->accent_color);
