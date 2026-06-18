@@ -10,6 +10,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -119,6 +120,10 @@ def build_esphome_command(
     ]
 
 
+def esphome_working_dir(yaml_path: Path) -> Path:
+    return yaml_path.parent
+
+
 def parse_args(argv: list[str]) -> tuple[bool, Path, str, list[str]]:
     dry_run = False
     filtered_args: list[str] = []
@@ -150,7 +155,7 @@ def run(argv: list[str]) -> int:
         print(shlex.join(esphome_command))
         return 0
 
-    return subprocess.run(esphome_command, cwd=ROOT).returncode
+    return subprocess.run(esphome_command, cwd=esphome_working_dir(yaml_path)).returncode
 
 
 class LocalEsphomeTests(unittest.TestCase):
@@ -186,6 +191,21 @@ class LocalEsphomeTests(unittest.TestCase):
                 "192.168.1.10",
             ],
         )
+
+    def test_runs_esphome_from_yaml_directory(self) -> None:
+        path = ROOT / "devices" / "esp32-p4-86" / "dev.yaml"
+        self.assertEqual(esphome_working_dir(path), ROOT / "devices" / "esp32-p4-86")
+
+    def test_invokes_esphome_from_yaml_directory(self) -> None:
+        path = ROOT / "devices" / "esp32-p4-86" / "dev.yaml"
+        with (
+            mock.patch(__name__ + ".parse_args", return_value=(False, path, "run", [])),
+            mock.patch(__name__ + ".local_version_for", return_value="local-version"),
+            mock.patch(__name__ + ".subprocess.run") as run_mock,
+        ):
+            run_mock.return_value.returncode = 0
+            self.assertEqual(run(["devices/esp32-p4-86/dev.yaml", "run"]), 0)
+            self.assertEqual(run_mock.call_args.kwargs["cwd"], path.parent)
 
 
 def self_test() -> int:
