@@ -1,5 +1,12 @@
 #pragma once
 
+#ifndef ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_ALL = 0;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1u << 0;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART = 1u << 1;
+#define ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED 1
+#endif
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 // RGB multipliers for display calibration; 100 leaves a channel unchanged.

@@ -17,9 +17,12 @@ using HomeAssistantStateCallback = std::function<void(esphome::StringRef)>;
 using HomeAssistantActionResponseCallback =
   std::function<void(const esphome::api::ActionResponse &)>;
 
+#ifndef ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_ALL = 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1u << 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART = 1u << 1;
+#define ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED 1
+#endif
 
 inline uint32_t &ha_subscription_generation();
 
