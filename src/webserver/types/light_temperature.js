@@ -214,9 +214,7 @@ function renderLightControlTabSettings(panel, b, helpers) {
   function updateMoveButtons() {
     var rows = listRows();
     rows.forEach(function (row, index) {
-      var up = row.querySelector(".sp-light-tab-move-up");
       var down = row.querySelector(".sp-light-tab-move-down");
-      if (up) up.disabled = index === 0;
       if (down) down.disabled = index === rows.length - 1;
     });
   }
@@ -244,14 +242,6 @@ function renderLightControlTabSettings(panel, b, helpers) {
     var controls = document.createElement("div");
     controls.className = "sp-light-tab-controls";
 
-    var upBtn = document.createElement("button");
-    upBtn.type = "button";
-    upBtn.className = "sp-light-tab-move sp-light-tab-move-up mdi mdi-chevron-up";
-    upBtn.setAttribute("aria-label", "Move " + definition.label + " up");
-    upBtn.addEventListener("click", function () {
-      moveRow(row, -1);
-    });
-
     var drag = document.createElement("button");
     drag.type = "button";
     drag.className = "sp-light-tab-drag mdi mdi-drag";
@@ -266,7 +256,6 @@ function renderLightControlTabSettings(panel, b, helpers) {
       moveRow(row, 1);
     });
 
-    controls.appendChild(upBtn);
     controls.appendChild(drag);
     controls.appendChild(downBtn);
     row.appendChild(controls);

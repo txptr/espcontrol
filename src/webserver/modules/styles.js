@@ -378,13 +378,13 @@ var CSS =
   "box-shadow:0 1px 3px rgba(0,0,0,.3)}" +
   ".sp-toggle input:checked+.sp-toggle-track{background:var(--accent);border-color:var(--accent)}" +
   ".sp-toggle input:checked+.sp-toggle-track:before{transform:translateX(20px)}" +
-  ".sp-light-tab-list{display:grid;gap:0;margin:-4px 0 28px}" +
+  ".sp-light-tab-list{display:grid;gap:0;margin:-6px 0 18px}" +
   ".sp-light-tab-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;" +
-  "gap:14px;min-height:54px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08)}" +
+  "gap:10px;min-height:42px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08)}" +
   ".sp-light-tab-row:last-child{border-bottom:0}" +
   ".sp-light-tab-row.sp-dragging{opacity:.55}" +
   ".sp-light-tab-controls{display:inline-flex;align-items:center;gap:2px;color:var(--text3)}" +
-  ".sp-light-tab-move,.sp-light-tab-drag{width:28px;height:32px;border:0;background:transparent;" +
+  ".sp-light-tab-move,.sp-light-tab-drag{width:28px;height:28px;border:0;background:transparent;" +
   "color:var(--text3);display:inline-flex;align-items:center;justify-content:center;border-radius:8px;" +
   "font-size:18px;line-height:1;font-family:inherit;cursor:pointer;transition:background .2s,color .2s}" +
   ".sp-light-tab-drag{cursor:grab;font-size:20px}" +
