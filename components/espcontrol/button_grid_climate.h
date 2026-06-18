@@ -253,10 +253,11 @@ inline int climate_clamp_tenths(ClimateControlCtx *ctx, int value) {
 
 inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {
   if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;
-  if (ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS ||
-      ctx->configured_step_tenths == CLIMATE_WHOLE_NUMBER_STEP_TENTHS)
-    return ctx->configured_step_tenths;
-  return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
+  int configured_step = (ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS ||
+                         ctx->configured_step_tenths == CLIMATE_WHOLE_NUMBER_STEP_TENTHS)
+    ? ctx->configured_step_tenths
+    : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
+  return ctx->step_tenths > configured_step ? ctx->step_tenths : configured_step;
 }
 
 inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {
