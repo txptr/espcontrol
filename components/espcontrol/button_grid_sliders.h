@@ -714,8 +714,8 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   if (tab_size < 48) tab_size = 48;
   if (tab_size > 68) tab_size = 68;
   lv_coord_t selected_tab_size = tab_size + tab_size / 8;
-  lv_coord_t tab_frame_pad = tab_size / 5;
-  lv_coord_t tab_gap = tab_size / 4;
+  lv_coord_t tab_frame_pad = tab_size / 4;
+  lv_coord_t tab_gap = tab_size / 3;
   lv_coord_t tabs_total_w = tab_size * tab_count + tab_gap * (tab_count - 1);
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
@@ -724,8 +724,8 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   while (centered_left < tab_safe_left && tab_size > 40) {
     tab_size--;
     selected_tab_size = tab_size + tab_size / 8;
-    tab_frame_pad = tab_size / 5;
-    tab_gap = tab_size / 4;
+    tab_frame_pad = tab_size / 4;
+    tab_gap = tab_size / 3;
     tabs_total_w = tab_size * tab_count + tab_gap * (tab_count - 1);
     tab_frame_w = tabs_total_w + tab_frame_pad * 2;
     tab_frame_h = tab_size + tab_frame_pad * 2;
