@@ -163,7 +163,7 @@ select:
 
 number:
   - platform: template
-    name: "${entity_home_assistant_artwork_port}"
+    name: "Home Assistant Artwork Port"
     internal: true
     id: cover_art_home_assistant_artwork_port
     entity_category: config

@@ -262,6 +262,8 @@ const ICON_GROUPS = {
   'Gamepad': 'Media & Entertainment',
   'Headphones': 'Media & Entertainment',
   'Message Video': 'Media & Entertainment',
+  'Microphone': 'Media & Entertainment',
+  'Microphone Off': 'Media & Entertainment',
   'Microsoft Xbox': 'Media & Entertainment',
   'Monitor': 'Media & Entertainment',
   'Movie Roll': 'Media & Entertainment',
@@ -286,6 +288,7 @@ const ICON_GROUPS = {
   'Television': 'Media & Entertainment',
   'Television Off': 'Media & Entertainment',
   'Volume High': 'Media & Entertainment',
+  'Volume Off': 'Media & Entertainment',
 
   'Fountain': 'Water & Outdoors',
   'Hot Tub': 'Water & Outdoors',

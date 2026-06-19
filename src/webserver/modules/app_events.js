@@ -15,6 +15,7 @@ var SSE_ALIAS_GROUPS = {
   coverArtDelay: ["number-screen_saver__cover_art_delay", "number-screen_saver_cover_art_delay", "number-cover_art_delay"],
   trackOverlayDuration: ["number-screen_saver__track_overlay_duration", "number-screen_saver_track_overlay_duration", "number-track_overlay_duration", "number-screen_saver__show_track_overlay"],
   coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
+  homeAssistantArtworkProtocol: ["select-home_assistant_artwork_protocol", "select-cover_art_home_assistant_artwork_protocol"],
   homeAssistantArtworkPort: ["number-home_assistant_artwork_port"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
@@ -27,9 +28,6 @@ var SSE_ALIAS_GROUPS = {
   ntpServer1: ["text-screen__ntp_server_1", "text-ntp_server_1"],
   ntpServer2: ["text-screen__ntp_server_2", "text-ntp_server_2"],
   ntpServer3: ["text-screen__ntp_server_3", "text-ntp_server_3"],
-  homeAssistantArtworkProtocol: ["select-home_assistant_artwork_protocol", "select-cover_art_home_assistant_artwork_protocol"],
-  homeAssistantArtworkPort: ["number-home_assistant_artwork_port", "number-cover_art_home_assistant_artwork_port"],
-  developerExperimentalFeatures: ["switch-developer__experimental_features", "switch-developer_experimental_features"],
 };
 
 function applyClockBarStateValue(val, d, matchedKey) {
@@ -268,6 +266,10 @@ function connectEvents() {
       state.coverArtTrackOverlayDuration = parseFloat(val) || 0;
       syncCoverArtScreensaverUi();
     },
+    "select-home_assistant_artwork_protocol": function (val, d) {
+      state.homeAssistantArtworkProtocol = normalizeHomeAssistantArtworkProtocol(d.value || val);
+      syncCoverArtScreensaverUi();
+    },
     "number-home_assistant_artwork_port": function (val) {
       state.coverArtHomeAssistantPort = normalizeHomeAssistantArtworkPort(val);
       syncCoverArtScreensaverUi();
@@ -406,14 +408,6 @@ function connectEvents() {
       state.customNtpServers = state.customNtpServers || hasCustomNtpServers();
       syncNtpServerUi();
     },
-    "select-home_assistant_artwork_protocol": function (val, d) {
-      state.homeAssistantArtworkProtocol = normalizeHomeAssistantArtworkProtocol(d.value || val);
-      syncConnectivityUi();
-    },
-    "number-home_assistant_artwork_port": function (val, d) {
-      state.homeAssistantArtworkPort = normalizeHomeAssistantArtworkPort(d.value != null ? d.value : val);
-      syncConnectivityUi();
-    },
     "select-screen__rotation": function (val, d) {
       state.screenRotation = normalizeScreenRotation(d.value || val || state.screenRotation);
       if (d.option && Array.isArray(d.option)) {
@@ -484,6 +478,7 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtDelay, sseHandlers["number-screen_saver__cover_art_delay"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.trackOverlayDuration, sseHandlers["number-screen_saver__track_overlay_duration"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, sseHandlers["switch-screen_saver__hide_cover_art_on_external_input"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, sseHandlers["select-home_assistant_artwork_protocol"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, sseHandlers["number-home_assistant_artwork_port"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleTrigger, sseHandlers["text-screen__schedule_trigger"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, sseHandlers["number-screen__schedule_wake_timeout"]);
@@ -496,9 +491,6 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer1, sseHandlers["text-screen__ntp_server_1"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer2, sseHandlers["text-screen__ntp_server_2"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer3, sseHandlers["text-screen__ntp_server_3"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, sseHandlers["select-home_assistant_artwork_protocol"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, sseHandlers["number-home_assistant_artwork_port"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.developerExperimentalFeatures, sseHandlers["switch-developer__experimental_features"]);
 
   var ssePatterns = [
     {

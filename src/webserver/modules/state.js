@@ -91,6 +91,7 @@ var state = {
   coverArtDelay: 10,
   coverArtTrackOverlayDuration: 5,
   coverArtHideExternalInputOn: true,
+  homeAssistantArtworkProtocol: "http",
   coverArtHomeAssistantPort: 8123,
   screensaverMode: "disabled",
   _screensaverModeReceived: false,
@@ -132,8 +133,6 @@ var state = {
   ntpServer1: NTP_SERVER_DEFAULTS[0],
   ntpServer2: NTP_SERVER_DEFAULTS[1],
   ntpServer3: NTP_SERVER_DEFAULTS[2],
-  homeAssistantArtworkProtocol: "http",
-  homeAssistantArtworkPort: 8123,
   screenRotation: (CFG.features && CFG.features.screenRotationDefault) || "0",
   screenRotationOptions: (CFG.features && CFG.features.screenRotationOptions) || ["0", "90", "180", "270"],
   screenRotationDeviceOptions: null,
@@ -542,30 +541,6 @@ function resetNtpServersToDefaults() {
   state.ntpServer3 = NTP_SERVER_DEFAULTS[2];
 }
 
-function normalizeHomeAssistantArtworkProtocol(value) {
-  value = String(value == null ? "" : value).trim().toLowerCase();
-  return value === "https" ? "https" : "http";
-}
-
-function normalizeHomeAssistantArtworkPort(value) {
-  var port = parseInt(value, 10);
-  if (!isFinite(port)) return 8123;
-  if (port < 1) return 1;
-  if (port > 65535) return 65535;
-  return port;
-}
-
-function syncConnectivityUi() {
-  state.homeAssistantArtworkProtocol = normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol);
-  state.homeAssistantArtworkPort = normalizeHomeAssistantArtworkPort(state.homeAssistantArtworkPort);
-  if (els.setHomeAssistantArtworkProtocol) {
-    els.setHomeAssistantArtworkProtocol.value = state.homeAssistantArtworkProtocol;
-  }
-  if (els.setHomeAssistantArtworkPort) {
-    els.setHomeAssistantArtworkPort.value = state.homeAssistantArtworkPort;
-  }
-}
-
 function formatDuration(seconds) {
   seconds = normalizeScheduleWakeTimeout(seconds);
   if (seconds < 60) return seconds + " second" + (seconds === 1 ? "" : "s");
@@ -646,6 +621,11 @@ function normalizeHomeAssistantArtworkPort(value) {
   if (port < 1) return 1;
   if (port > 65535) return 65535;
   return port;
+}
+
+function normalizeHomeAssistantArtworkProtocol(value) {
+  value = String(value == null ? "" : value).trim().toLowerCase();
+  return value === "https" ? "https" : "http";
 }
 
 function setSelectValue(select, value, label) {

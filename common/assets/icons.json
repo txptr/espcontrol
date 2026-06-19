@@ -886,6 +886,16 @@
       "mdi": "meter-gas"
     },
     {
+      "name": "Microphone",
+      "codepoint": "F036C",
+      "mdi": "microphone"
+    },
+    {
+      "name": "Microphone Off",
+      "codepoint": "F036D",
+      "mdi": "microphone-off"
+    },
+    {
       "name": "Microsoft Xbox",
       "codepoint": "F05B9",
       "mdi": "microsoft-xbox"
@@ -1394,6 +1404,11 @@
       "name": "Volume High",
       "codepoint": "F057E",
       "mdi": "volume-high"
+    },
+    {
+      "name": "Volume Off",
+      "codepoint": "F0581",
+      "mdi": "volume-off"
     },
     {
       "name": "Wall Outlet",
