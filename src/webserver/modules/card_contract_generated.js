@@ -1143,6 +1143,25 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "local_sensor": {
+    "label": "Local Sensor",
+    "allowInSubpage": true,
+    "domains": [
+      "sensor",
+      "text_sensor"
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "local_sensor",
+      "precision": "",
+      "options": ""
+    }
+  },
   "slider": {
     "label": "Slider",
     "allowInSubpage": true,
@@ -1380,6 +1399,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "clock": "CK",
   "timezone": "T",
   "sensor": "S",
+  "local_sensor": "LS",
   "door_window": "X",
   "presence": "PR",
   "weather": "W",
@@ -1416,6 +1436,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "CK": "clock",
   "T": "timezone",
   "S": "sensor",
+  "LS": "local_sensor",
   "X": "door_window",
   "PR": "presence",
   "W": "weather",
