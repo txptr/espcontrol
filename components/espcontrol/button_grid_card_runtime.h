@@ -228,8 +228,7 @@ inline std::string card_runtime_lawn_mower_mode(const std::string &mode) {
 
 inline bool card_runtime_lawn_mower_state_mode(const std::string &mode) {
   std::string normalized = card_runtime_lawn_mower_mode(mode);
-  return normalized == "status" || normalized == "start_mowing" ||
-         normalized == "dock" || normalized == "pause_resume";
+  return normalized == "status" || normalized == "pause_resume";
 }
 
 inline const char *card_runtime_lawn_mower_default_icon_name(const std::string &mode) {
