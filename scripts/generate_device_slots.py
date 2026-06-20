@@ -39,8 +39,14 @@ def package_substitution_lines(device: dict) -> list[str]:
     ]
     if package.get("firmwareVersion"):
         lines.append(f'  firmware_version: "{package["firmwareVersion"]}"')
+    added_voice_substitutions = False
     for key, value in package["substitutions"].items():
         lines.append(f"  {key}: {value}")
+        if key == "clock_bar_visual_gap":
+            lines.extend(voice_substitution_lines(device))
+            added_voice_substitutions = True
+    if not added_voice_substitutions:
+        lines.extend(voice_substitution_lines(device))
     if package.get("ethernetSelectable"):
         frequency = package["backlightPwmFrequency"]
         lines.extend(
@@ -55,6 +61,36 @@ def package_substitution_lines(device: dict) -> list[str]:
         )
     lines.extend(cover_art_substitution_lines(device))
     return lines
+
+
+def voice_substitution_lines(device: dict) -> list[str]:
+    if device["slug"] != "esp32-p4-86":
+        return [
+            '  voice_clock_bar_hide_code: ""',
+            '  voice_clock_bar_apply_code: ""',
+            '  voice_interaction_active_condition: "false"',
+        ]
+    return [
+        "  voice_clock_bar_hide_code: |-",
+        "    lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "  voice_clock_bar_apply_code: |-",
+        "    if (id(voice_services_enabled).state) {",
+        "      lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,",
+        "                   -(clock_bar_right_x + clock_bar_item_width / 2), clock_bar_icon_y);",
+        "      lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "      const bool microphone_muted = id(master_mute_switch).state;",
+        "      const bool output_muted = id(voice_media_player).is_muted();",
+        "      lv_label_set_text(id(voice_clock_bar_mute_icon_label),",
+        '                        microphone_muted ? "\\U000F036D" :',
+        '                        output_muted ? "\\U000F04C4" : "\\U000F036C");',
+        "      lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),",
+        "                                  lv_color_hex(0xFFFFFF),",
+        "                                  LV_PART_MAIN);",
+        "    } else {",
+        "      lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "    }",
+        '  voice_interaction_active_condition: "id(voice_interaction_active)"',
+    ]
 
 
 def cover_art_substitution_lines(device: dict) -> list[str]:
@@ -348,6 +384,10 @@ def package_file_text(device: dict) -> str:
                 "fw_update",
                 f"!include ../../common/addon/firmware_update{firmware_update_suffix}.yaml",
             ),
+            *[
+                include_line(key, include)
+                for key, include in (package.get("extraPackages") or {}).items()
+            ],
             "",
             "  # ---------------------------------------------------------------------------",
             "  # Screens (loading must be first page for LVGL startup)",

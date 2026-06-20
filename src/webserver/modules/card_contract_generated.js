@@ -175,6 +175,38 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "lawn_mower": {
+    "label": "Lawn Mower",
+    "allowInSubpage": true,
+    "domains": [
+      "lawn_mower"
+    ],
+    "options": [
+      {
+        "name": "lawn_mower_mode",
+        "label": "Type",
+        "kind": "choice",
+        "values": [
+          "status",
+          "start_mowing",
+          "dock",
+          "pause_resume"
+        ],
+        "defaultValue": "start_mowing"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Robot Mower",
+      "icon_on": "Auto",
+      "sensor": "start_mowing",
+      "unit": "",
+      "type": "lawn_mower",
+      "precision": "",
+      "options": ""
+    }
+  },
   "alarm": {
     "label": "Alarm",
     "allowInSubpage": true,
@@ -795,6 +827,14 @@ var CARD_CONTRACT_CARDS = {
     "domains": [
       "light"
     ],
+    "options": [
+      {
+        "name": "light_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "defaultValue": "power|brightness|temperature|color"
+      }
+    ],
     "default": {
       "entity": "",
       "label": "",
@@ -1111,6 +1151,27 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "local_sensor": {
+    "label": "Local Sensor",
+    "allowInSubpage": true,
+    "pickerKey": "sensor",
+    "hidden": true,
+    "domains": [
+      "sensor",
+      "text_sensor"
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "local",
+      "unit": "",
+      "type": "sensor",
+      "precision": "",
+      "options": ""
+    }
+  },
   "slider": {
     "label": "Slider",
     "allowInSubpage": true,
@@ -1151,6 +1212,7 @@ var CARD_CONTRACT_CARDS = {
           "garage",
           "lock",
           "vacuum",
+          "lawn_mower",
           "weather",
           "sensor",
           "image"
@@ -1326,6 +1388,10 @@ var CARD_CONTRACT_MIGRATION_ALIASES = {
   "weather_forecast": {
     "type": "weather",
     "precision": "tomorrow"
+  },
+  "local_sensor": {
+    "type": "sensor",
+    "sensor": "local"
   }
 };
 var CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES = ["slider", "light_brightness", "fan_speed"];
@@ -1347,6 +1413,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "clock": "CK",
   "timezone": "T",
   "sensor": "S",
+  "local_sensor": "LS",
   "door_window": "X",
   "presence": "PR",
   "weather": "W",
@@ -1365,6 +1432,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "slider": "L",
   "cover": "C",
   "vacuum": "VC",
+  "lawn_mower": "LM",
   "light_temperature": "N",
   "garage": "R",
   "lock": "K",
@@ -1382,6 +1450,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "CK": "clock",
   "T": "timezone",
   "S": "sensor",
+  "LS": "local_sensor",
   "X": "door_window",
   "PR": "presence",
   "W": "weather",
@@ -1400,6 +1469,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "L": "slider",
   "C": "cover",
   "VC": "vacuum",
+  "LM": "lawn_mower",
   "N": "light_temperature",
   "R": "garage",
   "K": "lock",

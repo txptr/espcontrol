@@ -181,6 +181,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "") return "Switch";
   if (type == "action") return "Action";
   if (type == "vacuum") return "Vacuum";
+  if (type == "lawn_mower") return "Lawn Mower";
   if (type == "alarm") return "Alarm";
   if (type == "alarm_action") return "Alarm";
   if (type == "calendar") return "Date & Time";
@@ -207,6 +208,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "screen_lock") return "Screen Lock";
   if (type == "webhook") return "Webhook";
   if (type == "sensor") return "Sensor";
+  if (type == "local_sensor") return "Local Sensor";
   if (type == "slider") return "Slider";
   if (type == "subpage") return "Subpage";
   if (type == "timezone") return "Date & Time";
@@ -220,6 +222,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "") return true;
   if (type == "action") return true;
   if (type == "vacuum") return true;
+  if (type == "lawn_mower") return true;
   if (type == "alarm") return true;
   if (type == "alarm_action") return true;
   if (type == "calendar") return true;
@@ -246,6 +249,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "screen_lock") return true;
   if (type == "webhook") return true;
   if (type == "sensor") return true;
+  if (type == "local_sensor") return true;
   if (type == "slider") return true;
   if (type == "subpage") return false;
   if (type == "timezone") return true;
@@ -259,6 +263,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "") return "Auto";
   if (type == "action") return "Flash";
   if (type == "vacuum") return "Robot Vacuum";
+  if (type == "lawn_mower") return "Robot Mower";
   if (type == "alarm") return "Security";
   if (type == "alarm_action") return "Shield Lock";
   if (type == "calendar") return "Auto";
@@ -285,6 +290,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "screen_lock") return "Lock";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
+  if (type == "local_sensor") return "Auto";
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
@@ -298,6 +304,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "") return "Auto";
   if (type == "action") return "Auto";
   if (type == "vacuum") return "Auto";
+  if (type == "lawn_mower") return "Auto";
   if (type == "alarm") return "Auto";
   if (type == "alarm_action") return "Auto";
   if (type == "calendar") return "Auto";
@@ -324,6 +331,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "screen_lock") return "Lock Open";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
+  if (type == "local_sensor") return "Auto";
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
@@ -369,6 +377,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "clock") return "CK";
   if (type == "timezone") return "T";
   if (type == "sensor") return "S";
+  if (type == "local_sensor") return "LS";
   if (type == "door_window") return "X";
   if (type == "presence") return "PR";
   if (type == "weather") return "W";
@@ -387,6 +396,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "slider") return "L";
   if (type == "cover") return "C";
   if (type == "vacuum") return "VC";
+  if (type == "lawn_mower") return "LM";
   if (type == "light_temperature") return "N";
   if (type == "garage") return "R";
   if (type == "lock") return "K";
@@ -406,6 +416,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "CK") return "clock";
   if (code == "T") return "timezone";
   if (code == "S") return "sensor";
+  if (code == "LS") return "local_sensor";
   if (code == "X") return "door_window";
   if (code == "PR") return "presence";
   if (code == "W") return "weather";
@@ -424,6 +435,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "L") return "slider";
   if (code == "C") return "cover";
   if (code == "VC") return "vacuum";
+  if (code == "LM") return "lawn_mower";
   if (code == "N") return "light_temperature";
   if (code == "R") return "garage";
   if (code == "K") return "lock";

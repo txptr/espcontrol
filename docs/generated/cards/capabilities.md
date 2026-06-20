@@ -12,6 +12,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Switch | switch | light, switch, input_boolean, fan | Yes | Own picker item | Large Active Display Numbers; Confirmation Required: default, off, on, both; On State Pattern: default, stripes; Message; Confirm Button; Cancel Button | Visible |
 | Action | action | scene, script, automation, button, input_button, input_boolean, input_number, input_select, select | Yes | Own picker item | Large State Numbers; Confirmation Required; Message; Confirm Button; Cancel Button | Visible |
 | Vacuum | vacuum | vacuum | Yes | Own picker item | Type: status, start_stop, dock, pause_resume, clean_spot, locate, clean_area | Visible |
+| Lawn Mower | lawn_mower | lawn_mower | Yes | Own picker item | Type: status, start_mowing, dock, pause_resume | Visible |
 | Alarm | alarm | alarm_control_panel | Yes | Own picker item | Type: control_panel, away, home, night, vacation, disarm; PIN required for arming; PIN required for disarming; Visible Actions: away, home, night, vacation, disarm; Icon Display: static, status; Label Display: name, status | Visible |
 | Alarm | alarm_action | alarm_control_panel | Yes | Alarm (alarm) | None | Visible |
 | Date & Time | calendar | sensor | Yes | Own picker item | Type: clock, datetime, default, timezone; Large Clock | Visible |
@@ -30,7 +31,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Lights | light_brightness | light | Yes | Own picker item | None | Visible |
 | Lights | light_switch | light | Yes | Lights (light_brightness) | None | Visible |
 | Lights | light_temperature | light | Yes | Lights (light_brightness) | None | Visible |
-| Lights | light_control | light | Yes | Lights (light_brightness) | None | Hidden |
+| Lights | light_control | light | Yes | Lights (light_brightness) | Visible Tabs | Hidden |
 | Lock | lock | lock | Yes | Own picker item | Type: default, lock, unlock | Visible |
 | Media | media | media_player | Yes | Own picker item | Type: play_pause, previous, next, volume, position, now_playing; Type: default, state; Controls: default, progress, play_pause; Maximum Volume: 1-100; Large Media Numbers | Visible |
 | Option Select | option_select | select, input_select | Yes | Own picker item | None | Hidden |
@@ -38,8 +39,9 @@ This generated reference lists stable setup facts from the shared card contract.
 | Screen Lock | screen_lock | None | Yes | Own picker item | None | Visible |
 | Webhook | webhook | None | Yes | Own picker item | Headers | Visible |
 | Sensor | sensor | sensor, binary_sensor, text_sensor | Yes | Own picker item | Large Sensor Numbers; Active Color; Status Translation; Input Status; Display Text; Input Status 2; Display Text 2 | Visible |
+| Local Sensor | local_sensor | sensor, text_sensor | Yes | Sensor (sensor) | None | Hidden |
 | Slider | slider | light, fan | Yes | Own picker item | None | Visible |
-| Subpage | subpage | None | No | Own picker item | Subpage Type: default, switch, lights, climate, presence, media, alarm, cover, garage, lock, vacuum, weather, sensor, image; Large State Numbers | Visible |
+| Subpage | subpage | None | No | Own picker item | Subpage Type: default, switch, lights, climate, presence, media, alarm, cover, garage, lock, vacuum, lawn_mower, weather, sensor, image; Large State Numbers | Visible |
 | Date & Time | timezone | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
 | Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow; Large Temperature Numbers | Visible |
 | Camera Card | image | camera, image | Yes | Own picker item | Show Label; Show Icon; Expanded Image: fill, fit | Visible |

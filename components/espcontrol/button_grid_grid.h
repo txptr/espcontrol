@@ -258,6 +258,11 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
 
+  if (sensor_card_local_sensor(p)) {
+    if (p.entity.empty()) return;
+    setup_local_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
   if (is_text_sensor_card(p)) {
     setup_text_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
     return;
@@ -380,6 +385,15 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_internal_relay_card(s, p);
     return;
   }
+  if (p.type == "local" || action_card_local_action(p)) {
+    setup_local_action_card(s, p);
+    return;
+  }
+  if (p.type == "local_sensor" || sensor_card_local_sensor(p)) {
+    if (p.entity.empty()) return;
+    setup_local_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
   if (p.type == "action") {
     if (action_card_option_select(p)) {
       setup_option_select_card(
@@ -393,6 +407,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   }
   if (p.type == "vacuum") {
     setup_vacuum_card(s, p);
+    return;
+  }
+  if (p.type == "lawn_mower") {
+    setup_lawn_mower_card(s, p);
     return;
   }
   if (p.type == "option_select") {
@@ -446,6 +464,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
 inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p,
                                    const CardPalette &palette) {
+  if (sensor_card_local_sensor(p)) return false;
   if (is_text_sensor_card(p)) {
     if (!p.sensor.empty())
       subscribe_sensor_text_card_value(s.text_lbl, p, s.btn,
@@ -892,6 +911,7 @@ inline void grid_phase2(
     if (cfg.info_only && info_only_hidden_card_type(p)) continue;
     if (p.type == "push") continue;
     if (bind_image_card(s, p, cfg)) continue;
+    if (p.type == "local_sensor" || sensor_card_local_sensor(p)) continue;
     if (bind_basic_sensor_card(s, p, palette)) continue;
     if (bind_passive_card_sources(s, p)) continue;
     if (p.type == "garage") {
@@ -931,10 +951,16 @@ inline void grid_phase2(
       if (p.label.empty())
         subscribe_friendly_name(s.text_lbl, p.entity);
 
-      if (normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind")) == "climate") {
+      std::string parent_subpage_kind = normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind"));
+      if (parent_subpage_kind == "climate") {
         subscribe_climate_subpage_parent_indicator(
           p.entity, s.btn, s.icon_lbl, has_icon_on[idx - 1],
           icon_off_cp[idx - 1], icon_on_cp[idx - 1]);
+      } else if (parent_subpage_kind == "lawn_mower") {
+        subscribe_toggle_state(s.btn, s.icon_lbl, s.sensor_container,
+          &has_sensor[idx - 1], &sensor_text_mode[idx - 1],
+          &has_icon_on[idx - 1], &icon_off_cp[idx - 1], &icon_on_cp[idx - 1],
+          nullptr, p.entity, false, lawn_mower_state_active_ref);
       } else {
         subscribe_toggle_state(s.btn, s.icon_lbl, s.sensor_container,
           &has_sensor[idx - 1], &sensor_text_mode[idx - 1],
@@ -1082,6 +1108,17 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "lawn_mower") {
+      lv_obj_set_user_data(s.btn, nullptr);
+      if (!p.entity.empty() && lawn_mower_card_mode_needs_state(p.sensor)) {
+        LawnMowerCardCtx *ctx = create_lawn_mower_card_context(s, p);
+        subscribe_lawn_mower_card_state(ctx);
+        lv_obj_set_user_data(s.btn, ctx);
+      } else if (!p.entity.empty()) {
+        subscribe_control_availability(s.btn, s.btn, p.entity);
+      }
+      continue;
+    }
     if (p.type == "option_select") {
       if (!p.entity.empty()) {
         OptionSelectCtx *ctx = create_option_select_context(
@@ -1114,6 +1151,9 @@ inline void grid_phase2(
         subscribe_todo_state(ctx);
         subscribe_todo_friendly_name(ctx);
       }
+      continue;
+    }
+    if (p.type == "local") {
       continue;
     }
     if (p.type == "media") {
@@ -1395,7 +1435,8 @@ inline void grid_phase2(
     }, LV_EVENT_CLICKED, main_page_obj);
     screen_lock_register_controlled_button(back_btn);
 
-    auto add_parent_indicator = [&](const std::string &entity_id) {
+    auto add_parent_indicator = [&](const std::string &entity_id,
+                                    bool (*is_active_state)(esphome::StringRef) = is_entity_on_ref) {
       if (!sp_indicator || entity_id.empty()) return;
       lv_obj_t *parent_btn = slots[si].btn;
       lv_obj_t *parent_icon = slots[si].icon_lbl;
@@ -1409,7 +1450,7 @@ inline void grid_phase2(
       subscribe_subpage_parent_indicator(
         entity_id, parent_btn, parent_icon, parent_idx,
         &sp_child_was_on[cwi], sp_has_icon_on,
-        sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+        sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count, is_active_state);
     };
 
     auto add_subpage_toggle_click = [&](lv_obj_t *btn, const std::string &entity_id, bool set_checked) {
@@ -1465,6 +1506,7 @@ inline void grid_phase2(
         continue;
       }
       if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;
+      if (sb_cfg.type == "local_sensor" || sensor_card_local_sensor(sb_cfg)) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;
       if (bind_passive_card_sources(sub_slot, sb_cfg)) continue;
       if (sb_cfg.type == "cover" && cover_modal_mode(sb_cfg.sensor)) {
@@ -1658,6 +1700,14 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "action") {
         if (!sb_cfg.entity.empty() && !sb_cfg.sensor.empty()) {
+          if (action_card_local_action(sb_cfg)) {
+            std::string *key = new std::string(sb_cfg.entity);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              std::string *k = (std::string *)lv_event_get_user_data(e);
+              if (k) send_local_action(*k);
+            }, LV_EVENT_CLICKED, key);
+            continue;
+          }
           if (action_card_option_select(sb_cfg)) {
             OptionSelectCtx *ctx = create_option_select_context(
               sub_slot, sb_cfg,
@@ -1705,6 +1755,24 @@ inline void grid_phase2(
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               VacuumCardCtx *ctx = (VacuumCardCtx *)lv_event_get_user_data(e);
               send_vacuum_card_action(ctx);
+            }, LV_EVENT_CLICKED, ctx);
+          }
+        }
+        continue;
+      }
+      if (sb_cfg.type == "lawn_mower") {
+        if (!sb_cfg.entity.empty()) {
+          LawnMowerCardCtx *ctx = create_lawn_mower_card_context(sub_slot, sb_cfg);
+          if (lawn_mower_card_mode_needs_state(sb_cfg.sensor)) {
+            subscribe_lawn_mower_card_state(ctx);
+          } else {
+            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+          }
+          add_parent_indicator(sb_cfg.entity, lawn_mower_state_active_ref);
+          if (!lawn_mower_card_read_only(sb_cfg)) {
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              LawnMowerCardCtx *ctx = (LawnMowerCardCtx *)lv_event_get_user_data(e);
+              send_lawn_mower_card_action(ctx);
             }, LV_EVENT_CLICKED, ctx);
           }
         }
@@ -1854,6 +1922,16 @@ inline void grid_phase2(
             ClimateControlCtx *ctx = (ClimateControlCtx *)lv_event_get_user_data(e);
             if (ctx) climate_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
+        }
+        continue;
+      }
+      if (sb_cfg.type == "local") {
+        if (!sb_cfg.entity.empty()) {
+          std::string *key = new std::string(sb_cfg.entity);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            std::string *k = (std::string *)lv_event_get_user_data(e);
+            if (k) send_local_action(*k);
+          }, LV_EVENT_CLICKED, key);
         }
         continue;
       }

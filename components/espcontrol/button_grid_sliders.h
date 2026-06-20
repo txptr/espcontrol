@@ -66,6 +66,8 @@ constexpr lv_coord_t MEDIA_VOLUME_CONTROLS_DOWN_REF_PX = DISPLAY_MODAL_CONTROLS_
 constexpr lv_coord_t MEDIA_VOLUME_TITLE_GAP_REF_PX = DISPLAY_MODAL_TITLE_GAP_REF_PX;
 constexpr lv_coord_t MEDIA_VOLUME_UNIT_Y_REF_PX = -22;
 constexpr lv_coord_t MEDIA_VOLUME_JC4880P443_BUTTON_REF_PX = 96;
+constexpr lv_coord_t MEDIA_VOLUME_MIC_BUTTON_OFFSET_REF_PX = 8;
+constexpr int MEDIA_VOLUME_MIC_ICON_ZOOM = 210;
 
 struct MediaVolumeCtx {
   std::string entity_id;
@@ -89,6 +91,9 @@ struct MediaVolumeCtx {
   const lv_font_t *icon_font = nullptr;
   std::function<void()> suspend_display_takeover;
   std::function<void()> resume_display_takeover;
+  std::function<void(int)> apply_percent;
+  std::function<bool()> mic_muted;
+  std::function<void(bool)> set_mic_muted;
   bool available = true;
 };
 
@@ -103,6 +108,8 @@ struct MediaVolumeModalUi {
   lv_obj_t *pct_unit_lbl = nullptr;
   lv_obj_t *minus_btn = nullptr;
   lv_obj_t *plus_btn = nullptr;
+  lv_obj_t *mic_btn = nullptr;
+  lv_obj_t *mic_lbl = nullptr;
   MediaVolumeCtx *active = nullptr;
   bool updating_arc = false;
 };
@@ -119,6 +126,7 @@ struct LightControlCtx {
   std::string entity_id;
   std::string label;
   std::string friendly_name;
+  std::string options;
   int current_pct = 0;
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
   lv_obj_t *btn = nullptr;
@@ -142,9 +150,32 @@ struct LightControlCtx {
 };
 
 enum class LightControlTab : uint8_t {
-  BRIGHTNESS = 0,
-  TEMPERATURE = 1,
-  COLOR = 2,
+  POWER = 0,
+  BRIGHTNESS = 1,
+  TEMPERATURE = 2,
+  COLOR = 3,
+};
+
+struct LightControlVisibleTabs {
+  LightControlTab tabs[4] = {
+    LightControlTab::POWER,
+    LightControlTab::BRIGHTNESS,
+    LightControlTab::TEMPERATURE,
+    LightControlTab::COLOR,
+  };
+  uint8_t count = 0;
+
+  bool contains(LightControlTab tab) const {
+    for (uint8_t i = 0; i < count; i++) {
+      if (tabs[i] == tab) return true;
+    }
+    return false;
+  }
+
+  void add(LightControlTab tab) {
+    if (count >= 4 || contains(tab)) return;
+    tabs[count++] = tab;
+  }
 };
 
 struct LightColorPresetClick {
@@ -160,9 +191,13 @@ struct LightControlModalUi {
   lv_obj_t *panel = nullptr;
   lv_obj_t *back_btn = nullptr;
   lv_obj_t *tab_row = nullptr;
+  lv_obj_t *power_tab = nullptr;
   lv_obj_t *brightness_tab = nullptr;
   lv_obj_t *temperature_tab = nullptr;
   lv_obj_t *color_tab = nullptr;
+  lv_obj_t *power_group = nullptr;
+  lv_obj_t *power_on_btn = nullptr;
+  lv_obj_t *power_off_btn = nullptr;
   lv_obj_t *slider = nullptr;
   lv_obj_t *slider_fill = nullptr;
   lv_obj_t *slider_handle = nullptr;
@@ -171,12 +206,76 @@ struct LightControlModalUi {
   lv_obj_t *temp_slider_handle = nullptr;
   lv_obj_t *color_grid = nullptr;
   LightControlCtx *active = nullptr;
-  LightControlTab tab = LightControlTab::BRIGHTNESS;
+  LightControlTab tab = LightControlTab::POWER;
 };
 
 inline LightControlModalUi &light_control_modal_ui() {
   static LightControlModalUi ui;
   return ui;
+}
+
+inline bool light_control_tab_from_token(const std::string &value, LightControlTab &tab) {
+  if (value == "power") {
+    tab = LightControlTab::POWER;
+    return true;
+  }
+  if (value == "brightness") {
+    tab = LightControlTab::BRIGHTNESS;
+    return true;
+  }
+  if (value == "temperature") {
+    tab = LightControlTab::TEMPERATURE;
+    return true;
+  }
+  if (value == "color") {
+    tab = LightControlTab::COLOR;
+    return true;
+  }
+  return false;
+}
+
+inline LightControlVisibleTabs light_control_visible_tabs(LightControlCtx *ctx) {
+  LightControlVisibleTabs visible;
+  std::string value = cfg_option_value(ctx ? ctx->options : "", LIGHT_CONTROL_TABS_OPTION);
+  if (value.empty()) value = LIGHT_CONTROL_DEFAULT_TABS_VALUE;
+
+  size_t start = 0;
+  while (start <= value.size()) {
+    size_t end = value.find('|', start);
+    std::string token = value.substr(start, end == std::string::npos ? std::string::npos : end - start);
+    LightControlTab tab = LightControlTab::POWER;
+    if (light_control_tab_from_token(token, tab)) visible.add(tab);
+    if (end == std::string::npos) break;
+    start = end + 1;
+  }
+  if (visible.count == 0) visible.add(LightControlTab::POWER);
+  return visible;
+}
+
+inline bool light_control_tab_visible(LightControlCtx *ctx, LightControlTab tab) {
+  LightControlVisibleTabs tabs = light_control_visible_tabs(ctx);
+  return tabs.contains(tab);
+}
+
+inline LightControlTab light_control_first_visible_tab(LightControlCtx *ctx) {
+  LightControlVisibleTabs tabs = light_control_visible_tabs(ctx);
+  return tabs.count == 0 ? LightControlTab::POWER : tabs.tabs[0];
+}
+
+inline void light_control_ensure_visible_tab(LightControlCtx *ctx) {
+  LightControlModalUi &ui = light_control_modal_ui();
+  if (light_control_tab_visible(ctx, ui.tab)) return;
+  ui.tab = light_control_first_visible_tab(ctx);
+}
+
+inline lv_obj_t *light_control_tab_button(LightControlModalUi &ui, LightControlTab tab) {
+  switch (tab) {
+    case LightControlTab::POWER: return ui.power_tab;
+    case LightControlTab::BRIGHTNESS: return ui.brightness_tab;
+    case LightControlTab::TEMPERATURE: return ui.temperature_tab;
+    case LightControlTab::COLOR: return ui.color_tab;
+  }
+  return nullptr;
 }
 
 inline void light_control_update_slider_handle(lv_obj_t *slider, lv_obj_t *handle, int pct);
@@ -231,7 +330,40 @@ inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
 }
 
 inline void light_control_apply_modal_power(LightControlCtx *ctx) {
-  (void) ctx;
+  LightControlModalUi &ui = light_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  lv_obj_t *on_label = ui.power_on_btn ? lv_obj_get_child(ui.power_on_btn, 0) : nullptr;
+  lv_obj_t *off_label = ui.power_off_btn ? lv_obj_get_child(ui.power_off_btn, 0) : nullptr;
+  if (ui.power_on_btn) {
+    lv_obj_set_style_bg_color(
+      ui.power_on_btn,
+      lv_color_hex(ctx->on ? ctx->accent_color : DARK_BACKGROUND_SECONDARY),
+      LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui.power_on_btn, ctx->on ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui.power_on_btn, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(ui.power_on_btn, 0, LV_PART_MAIN);
+  }
+  if (ui.power_off_btn) {
+    lv_obj_set_style_bg_color(
+      ui.power_off_btn,
+      lv_color_hex(ctx->on ? DARK_BACKGROUND_SECONDARY : 0xFFFFFF),
+      LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui.power_off_btn, ctx->on ? LV_OPA_TRANSP : LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui.power_off_btn, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(ui.power_off_btn, 0, LV_PART_MAIN);
+  }
+  if (on_label) {
+    lv_obj_set_style_text_color(
+      on_label,
+      lv_color_hex(ctx->on ? 0xFFFFFF : DARK_TEXT_MUTED),
+      LV_PART_MAIN);
+  }
+  if (off_label) {
+    lv_obj_set_style_text_color(
+      off_label,
+      lv_color_hex(ctx->on ? DARK_TEXT_MUTED : 0x000000),
+      LV_PART_MAIN);
+  }
 }
 
 inline int light_control_kelvin_to_pct(LightControlCtx *ctx, int kelvin) {
@@ -284,9 +416,32 @@ inline void light_control_apply_tab_visibility() {
   LightControlModalUi &ui = light_control_modal_ui();
   LightControlCtx *ctx = ui.active;
   if (!ctx) return;
+  LightControlVisibleTabs visible_tabs = light_control_visible_tabs(ctx);
+  if (!visible_tabs.contains(ui.tab)) ui.tab = visible_tabs.tabs[0];
+  bool show_power = ui.tab == LightControlTab::POWER;
   bool show_brightness = ui.tab == LightControlTab::BRIGHTNESS;
   bool show_temperature = ui.tab == LightControlTab::TEMPERATURE;
   bool show_color = ui.tab == LightControlTab::COLOR;
+  if (ui.power_tab) {
+    if (visible_tabs.contains(LightControlTab::POWER)) lv_obj_clear_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (ui.brightness_tab) {
+    if (visible_tabs.contains(LightControlTab::BRIGHTNESS)) lv_obj_clear_flag(ui.brightness_tab, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.brightness_tab, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (ui.temperature_tab) {
+    if (visible_tabs.contains(LightControlTab::TEMPERATURE)) lv_obj_clear_flag(ui.temperature_tab, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.temperature_tab, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (ui.color_tab) {
+    if (visible_tabs.contains(LightControlTab::COLOR)) lv_obj_clear_flag(ui.color_tab, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.color_tab, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (ui.power_group) {
+    if (show_power) lv_obj_clear_flag(ui.power_group, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.power_group, LV_OBJ_FLAG_HIDDEN);
+  }
   if (ui.slider) {
     if (show_brightness) lv_obj_clear_flag(ui.slider, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.slider, LV_OBJ_FLAG_HIDDEN);
@@ -299,12 +454,22 @@ inline void light_control_apply_tab_visibility() {
     if (show_color) lv_obj_clear_flag(ui.color_grid, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.color_grid, LV_OBJ_FLAG_HIDDEN);
   }
+  light_control_style_tab(ui.power_tab, show_power, ctx->accent_color);
   light_control_style_tab(ui.brightness_tab, show_brightness, ctx->accent_color);
   light_control_style_tab(ui.temperature_tab, show_temperature, ctx->accent_color);
   light_control_style_tab(ui.color_tab, show_color, ctx->accent_color);
+  light_control_apply_modal_power(ctx);
 }
 
 inline void light_control_layout_modal(LightControlCtx *ctx);
+
+inline void light_control_center_icon_label(lv_obj_t *label) {
+  if (!label) return;
+  lv_obj_update_layout(label);
+  lv_obj_set_style_transform_pivot_x(label, lv_obj_get_width(label) / 2, LV_PART_MAIN);
+  lv_obj_set_style_transform_pivot_y(label, lv_obj_get_height(label) / 2, LV_PART_MAIN);
+  lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+}
 
 inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *icon,
                                                  const lv_font_t *font,
@@ -312,7 +477,7 @@ inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *i
                                                  int width_compensation_percent) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  apply_width_compensation(btn, width_compensation_percent);
+  (void) width_compensation_percent;
   lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
@@ -326,8 +491,8 @@ inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *i
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
-    lv_obj_set_style_transform_zoom(label, 210, LV_PART_MAIN);
-    lv_obj_center(label);
+    lv_obj_set_style_transform_zoom(label, 180, LV_PART_MAIN);
+    light_control_center_icon_label(label);
   }
   lv_obj_add_event_cb(btn, [](lv_event_t *e) {
     LightControlTab tab = static_cast<LightControlTab>(
@@ -473,45 +638,134 @@ inline void light_control_style_slider(lv_obj_t *slider, uint32_t accent_color) 
   lv_obj_set_style_height(slider, 0, LV_PART_KNOB);
 }
 
+inline lv_obj_t *light_control_create_power_button(lv_obj_t *parent, const lv_font_t *font,
+                                                   int width_compensation_percent,
+                                                   bool turn_on) {
+  lv_obj_t *btn = lv_btn_create(parent);
+  if (!btn) return nullptr;
+  apply_width_compensation(btn, width_compensation_percent);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
+  control_modal_apply_pressed_fill(btn);
+  lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_t *label = lv_label_create(btn);
+  if (label) {
+    lv_label_set_text(label, find_icon(turn_on ? "Power" : "Circle Outline"));
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+    lv_obj_set_style_transform_zoom(label, turn_on ? 230 : 180, LV_PART_MAIN);
+    light_control_center_icon_label(label);
+  }
+  lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+    bool turn_on = static_cast<bool>(reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
+    LightControlModalUi &ui = light_control_modal_ui();
+    if (!ui.active || !ui.active->available) return;
+    ui.active->on = turn_on;
+    light_control_apply_card_visual(ui.active);
+    light_control_apply_modal_power(ui.active);
+    if (turn_on) send_turn_on_action(ui.active->entity_id);
+    else send_turn_off_action(ui.active->entity_id);
+  }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(turn_on)));
+  return btn;
+}
+
+inline void light_control_layout_power(lv_obj_t *group, lv_obj_t *on_btn,
+                                       lv_obj_t *off_btn, lv_coord_t width,
+                                       lv_coord_t height, lv_coord_t center_y) {
+  if (!group) return;
+  lv_obj_set_size(group, width, height);
+  lv_obj_align(group, LV_ALIGN_CENTER, 0, center_y);
+  lv_coord_t radius = width / 4;
+  if (radius < 24) radius = 24;
+  if (radius > 46) radius = 46;
+  lv_obj_set_style_radius(group, radius, LV_PART_MAIN);
+  lv_obj_set_style_clip_corner(group, true, LV_PART_MAIN);
+  lv_coord_t inset = width / 16;
+  if (inset < 8) inset = 8;
+  if (inset > 16) inset = 16;
+  lv_coord_t gap = inset;
+  lv_coord_t button_w = width - inset * 2;
+  lv_coord_t button_h = (height - inset * 2 - gap) / 2;
+  if (button_w < width / 2) button_w = width / 2;
+  if (button_h < 48) button_h = 48;
+  lv_coord_t button_radius = width > 0 ? radius * button_w / width : radius;
+  if (button_radius < 16) button_radius = 16;
+  if (button_radius > button_h / 2) button_radius = button_h / 2;
+  if (on_btn) {
+    lv_obj_set_size(on_btn, button_w, button_h);
+    lv_obj_set_style_radius(on_btn, button_radius, LV_PART_MAIN);
+    lv_obj_align(on_btn, LV_ALIGN_TOP_MID, 0, inset);
+    lv_obj_t *label = lv_obj_get_child(on_btn, 0);
+    light_control_center_icon_label(label);
+  }
+  if (off_btn) {
+    lv_obj_set_size(off_btn, button_w, button_h);
+    lv_obj_set_style_radius(off_btn, button_radius, LV_PART_MAIN);
+    lv_obj_align(off_btn, LV_ALIGN_BOTTOM_MID, 0, -inset);
+    lv_obj_t *label = lv_obj_get_child(off_btn, 0);
+    light_control_center_icon_label(label);
+  }
+}
+
 inline void light_control_layout_modal(LightControlCtx *ctx) {
   LightControlModalUi &ui = light_control_modal_ui();
   if (!ctx || !ui.panel) return;
+  light_control_ensure_visible_tab(ctx);
+  LightControlVisibleTabs visible_tabs = light_control_visible_tabs(ctx);
   ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
 
+  int tab_count = static_cast<int>(visible_tabs.count);
+  if (tab_count < 1) tab_count = 1;
   lv_coord_t tab_size = layout.back_size * 7 / 10;
   if (tab_size < 48) tab_size = 48;
   if (tab_size > 68) tab_size = 68;
   lv_coord_t selected_tab_size = tab_size + tab_size / 8;
   lv_coord_t tab_frame_pad = tab_size / 5;
-  lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
   lv_coord_t tab_gap = tab_size / 4;
-  lv_coord_t tabs_total_w = tab_size * 3 + tab_gap * 2;
+  lv_coord_t tabs_total_w = tab_size * tab_count + tab_gap * (tab_count - 1);
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
-  lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
-  if (tab_frame_w > max_tab_frame_w) tab_frame_w = max_tab_frame_w;
+  lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
+  lv_coord_t tab_safe_left = layout.back_inset_x + layout.back_size + layout.inset / 2;
+  lv_coord_t centered_left = (layout.panel_w - tab_frame_w) / 2;
+  while (centered_left < tab_safe_left && tab_size > 48) {
+    tab_size--;
+    selected_tab_size = tab_size + tab_size / 8;
+    tab_frame_pad = tab_size / 5;
+    tab_gap = tab_size / 4;
+    tabs_total_w = tab_size * tab_count + tab_gap * (tab_count - 1);
+    tab_frame_w = tabs_total_w + tab_frame_pad * 2;
+    tab_frame_h = tab_size + tab_frame_pad * 2;
+    centered_left = (layout.panel_w - tab_frame_w) / 2;
+  }
   lv_coord_t slider_w = control_modal_home_card_width(ctx->btn, layout);
   if (ui.tab_row) {
     lv_obj_set_size(ui.tab_row, tab_frame_w, tab_frame_h);
     lv_obj_set_style_radius(ui.tab_row, tab_frame_h / 2, LV_PART_MAIN);
-    lv_obj_align(ui.tab_row, LV_ALIGN_TOP_MID, 0, layout.inset + 2);
+    if (centered_left < tab_safe_left) centered_left = tab_safe_left;
+    lv_obj_align(ui.tab_row, LV_ALIGN_TOP_LEFT, centered_left, layout.inset + 2);
   }
-  lv_obj_t *tabs[3] = {ui.brightness_tab, ui.temperature_tab, ui.color_tab};
   lv_coord_t first_tab_x = (tab_frame_w - tabs_total_w) / 2;
-  for (int i = 0; i < 3; i++) {
-    if (!tabs[i]) continue;
-    bool active = (i == static_cast<int>(ui.tab));
+  for (int i = 0; i < tab_count; i++) {
+    lv_obj_t *tab_btn = light_control_tab_button(ui, visible_tabs.tabs[i]);
+    if (!tab_btn) continue;
+    bool active = (visible_tabs.tabs[i] == ui.tab);
     lv_coord_t tab_btn_size = active ? selected_tab_size : tab_size;
-    lv_obj_set_size(tabs[i], tab_btn_size, tab_btn_size);
-    lv_obj_set_style_radius(tabs[i], tab_btn_size / 2, LV_PART_MAIN);
+    lv_obj_set_size(tab_btn, tab_btn_size, tab_btn_size);
+    lv_obj_set_style_radius(tab_btn, tab_btn_size / 2, LV_PART_MAIN);
     lv_coord_t tab_x = first_tab_x + i * (tab_size + tab_gap);
-    lv_obj_align(tabs[i], LV_ALIGN_LEFT_MID, tab_x - (tab_btn_size - tab_size) / 2, 0);
-    lv_obj_t *label = lv_obj_get_child(tabs[i], 0);
-    if (label) lv_obj_align(label, LV_ALIGN_CENTER, tab_btn_size / 12, tab_btn_size / 12);
+    lv_obj_align(tab_btn, LV_ALIGN_LEFT_MID, tab_x - (tab_btn_size - tab_size) / 2, 0);
+    lv_obj_t *label = lv_obj_get_child(tab_btn, 0);
+    light_control_center_icon_label(label);
   }
 
   lv_coord_t content_center_y = tab_frame_h / 2 + 12;
   lv_coord_t slider_h = layout.panel_h - layout.inset * 3 - tab_frame_h - 16;
   if (slider_h < 160) slider_h = layout.panel_h / 2;
+  light_control_layout_power(
+    ui.power_group, ui.power_on_btn, ui.power_off_btn, slider_w, slider_h, content_center_y);
+  light_control_apply_modal_power(ctx);
   light_control_layout_slider(ui.slider, slider_w, slider_h, content_center_y);
   lv_obj_update_layout(ui.panel);
   light_control_update_slider_fill(
@@ -528,7 +782,7 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     ui.temp_slider, ui.temp_slider_handle, light_control_kelvin_to_pct(ctx, ctx->current_kelvin));
   if (ui.color_grid) {
     lv_coord_t grid_side = layout.panel_w - layout.inset * 3;
-    lv_coord_t max_grid_h = layout.panel_h - layout.inset * 4 - tab_size - 24;
+    lv_coord_t max_grid_h = layout.panel_h - layout.inset * 4 - tab_frame_h - 24;
     if (grid_side > max_grid_h) grid_side = max_grid_h;
     if (grid_side < 180) grid_side = 180;
     lv_obj_set_size(ui.color_grid, grid_side, grid_side);
@@ -565,6 +819,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
+  ui.tab = light_control_first_visible_tab(ctx);
   if (!ui.panel) return;
 
   ui.tab_row = lv_obj_create(ui.panel);
@@ -574,6 +829,9 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_SCROLLABLE);
+  ui.power_tab = light_control_create_tab_button(
+    ui.tab_row, find_icon("Power"), ctx->icon_font,
+    LightControlTab::POWER, ctx->width_compensation_percent);
   ui.brightness_tab = light_control_create_tab_button(
     ui.tab_row, find_icon("Lightbulb"), ctx->icon_font,
     LightControlTab::BRIGHTNESS, ctx->width_compensation_percent);
@@ -583,6 +841,18 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.color_tab = light_control_create_tab_button(
     ui.tab_row, find_icon("Palette"), ctx->icon_font,
     LightControlTab::COLOR, ctx->width_compensation_percent);
+
+  ui.power_group = lv_obj_create(ui.panel);
+  lv_obj_set_style_bg_color(ui.power_group, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.power_group, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.power_group, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.power_group, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.power_group, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.power_group, LV_OBJ_FLAG_SCROLLABLE);
+  ui.power_on_btn = light_control_create_power_button(
+    ui.power_group, ctx->icon_font, ctx->width_compensation_percent, true);
+  ui.power_off_btn = light_control_create_power_button(
+    ui.power_group, ctx->icon_font, ctx->width_compensation_percent, false);
 
   ui.slider = lv_slider_create(ui.panel);
   light_control_style_slider(ui.slider, ctx->accent_color);
@@ -727,6 +997,7 @@ inline LightControlCtx *create_light_control_context(
   LightControlCtx *ctx = new LightControlCtx();
   ctx->entity_id = p.entity;
   ctx->label = p.label;
+  ctx->options = p.options;
   ctx->accent_color = accent_color;
   ctx->btn = s.btn;
   ctx->icon_lbl = s.icon_lbl;
@@ -2212,6 +2483,24 @@ inline bool media_volume_pending_active(MediaVolumeCtx *ctx) {
 
 inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct);
 
+inline bool media_volume_has_mic_control(MediaVolumeCtx *ctx) {
+  return ctx && ctx->mic_muted && ctx->set_mic_muted;
+}
+
+inline void media_volume_apply_mic_button_state(MediaVolumeCtx *ctx) {
+  MediaVolumeModalUi &ui = media_volume_modal_ui();
+  if (!ctx || !ui.mic_btn || !ui.mic_lbl || !media_volume_has_mic_control(ctx)) return;
+  bool muted = ctx->mic_muted();
+  lv_label_set_text(ui.mic_lbl, muted ? "\U000F036D" : "\U000F036C");
+  lv_obj_set_style_text_color(ui.mic_lbl,
+    lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+}
+
+inline void media_volume_refresh_active_mic_button() {
+  MediaVolumeModalUi &ui = media_volume_modal_ui();
+  media_volume_apply_mic_button_state(ui.active);
+}
+
 inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
   if (!ctx || !ctx->pct_lbl) return;
   pct = media_clamp_percent(pct);
@@ -2232,7 +2521,13 @@ inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
   }
   media_volume_set_card_value(ctx, pct);
   media_volume_set_modal_value(ctx, pct);
-  if (send_action) send_media_volume_action(ctx->entity_id, pct);
+  if (send_action) {
+    if (ctx->apply_percent) {
+      ctx->apply_percent(pct);
+    } else {
+      send_media_volume_action(ctx->entity_id, pct);
+    }
+  }
 }
 
 inline void media_volume_hide_modal() {
@@ -2303,11 +2598,29 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   control_modal_apply_arc_layout(ui.arc, layout, ctx->width_compensation_percent);
   control_modal_apply_step_buttons_layout(
     ui.minus_btn, ui.plus_btn, media_volume_step_button_layout(layout));
+  if (ui.mic_btn) {
+    lv_obj_set_size(ui.mic_btn, layout.back_size, layout.back_size);
+    lv_obj_set_style_radius(ui.mic_btn, layout.back_size / 2, LV_PART_MAIN);
+    lv_coord_t mic_offset =
+      control_modal_scaled_px(MEDIA_VOLUME_MIC_BUTTON_OFFSET_REF_PX, layout.short_side);
+    lv_obj_align(ui.mic_btn, LV_ALIGN_TOP_RIGHT,
+      -layout.inset - mic_offset, layout.back_inset_y + mic_offset);
+    if (ui.mic_lbl && MEDIA_VOLUME_MIC_ICON_ZOOM != 256) {
+      lv_obj_update_layout(ui.mic_lbl);
+      lv_coord_t offset_x = lv_obj_get_width(ui.mic_lbl) *
+        (256 - MEDIA_VOLUME_MIC_ICON_ZOOM) / 512;
+      lv_coord_t offset_y = lv_obj_get_height(ui.mic_lbl) *
+        (256 - MEDIA_VOLUME_MIC_ICON_ZOOM) / 512;
+      lv_obj_set_style_transform_zoom(ui.mic_lbl, MEDIA_VOLUME_MIC_ICON_ZOOM, LV_PART_MAIN);
+      lv_obj_align(ui.mic_lbl, LV_ALIGN_CENTER, offset_x, offset_y);
+    }
+  }
   lv_obj_set_style_translate_y(ui.pct_unit_lbl,
     control_modal_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, layout.short_side), LV_PART_MAIN);
   lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, title_center_y);
   lv_obj_align(ui.pct_row, LV_ALIGN_CENTER, 0, layout.value_center_y);
   lv_obj_move_foreground(ui.back_btn);
+  if (ui.mic_btn) lv_obj_move_foreground(ui.mic_btn);
 }
 
 inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
@@ -2417,6 +2730,23 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
       media_volume_apply_percent(ui.active, current + 1, true, true);
     }
   }, LV_EVENT_CLICKED, nullptr);
+
+  if (media_volume_has_mic_control(ctx)) {
+    ui.mic_btn = control_modal_create_round_button(ui.panel, 32, "\U000F036C",
+      ctx->icon_font, DARK_BORDER, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
+    if (ui.mic_btn) {
+      control_modal_style_chrome_button(ui.mic_btn, shell.layout, true);
+      ui.mic_lbl = lv_obj_get_child(ui.mic_btn, 0);
+      lv_obj_add_event_cb(ui.mic_btn, [](lv_event_t *) {
+        MediaVolumeModalUi &ui = media_volume_modal_ui();
+        if (!media_volume_has_mic_control(ui.active)) return;
+        bool muted = ui.active->mic_muted();
+        ui.active->set_mic_muted(!muted);
+        media_volume_apply_mic_button_state(ui.active);
+      }, LV_EVENT_CLICKED, nullptr);
+      media_volume_apply_mic_button_state(ctx);
+    }
+  }
 
   media_volume_layout_modal(ctx);
   media_volume_set_modal_value(ctx, ctx->current_pct);

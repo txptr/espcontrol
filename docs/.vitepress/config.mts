@@ -150,7 +150,7 @@ const faqItems = [
   {
     question: 'What Card Types Are Available?',
     answer:
-      'The setup page includes Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage cards.',
+      'The setup page includes Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Lawn Mower, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage cards.',
   },
   {
     question: 'How Many Cards Can I Have?',
@@ -412,13 +412,16 @@ export default defineConfig({
           { text: 'Fans', link: '/card-types/fans' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
           { text: 'Internal', link: '/card-types/internal-relays' },
+          { text: 'Lawn Mower', link: '/card-types/lawn-mower' },
           { text: 'Lights', link: '/card-types/lights' },
+          { text: 'Local Action', link: '/card-types/local-actions' },
           { text: 'Lock', link: '/card-types/locks' },
           { text: 'Media', link: '/card-types/media' },
           { text: 'Option Select', link: '/card-types/option-select' },
           { text: 'Presence', link: '/card-types/presence' },
           { text: 'Screen Lock', link: '/card-types/screen-lock' },
           { text: 'Sensor', link: '/card-types/sensors' },
+          { text: 'Local Sensor', link: '/card-types/local-sensors' },
           { text: 'Slider', link: '/card-types/sliders' },
           { text: 'Subpage', link: '/features/subpages' },
           { text: 'Switch', link: '/card-types/switches' },

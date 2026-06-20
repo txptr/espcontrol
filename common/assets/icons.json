@@ -401,6 +401,11 @@
       "mdi": "clock-outline"
     },
     {
+      "name": "Circle Outline",
+      "codepoint": "F0766",
+      "mdi": "circle-outline"
+    },
+    {
       "name": "Coffee Maker",
       "codepoint": "F109F",
       "mdi": "coffee-maker"
@@ -741,6 +746,16 @@
       "mdi": "robot-mower"
     },
     {
+      "name": "Robot Mower",
+      "codepoint": "F11F7",
+      "mdi": "robot-mower"
+    },
+    {
+      "name": "Robot Mower Outline",
+      "codepoint": "F11F3",
+      "mdi": "robot-mower-outline"
+    },
+    {
       "name": "Leaf",
       "codepoint": "F032A",
       "mdi": "leaf"
@@ -884,6 +899,16 @@
       "name": "Meter Gas",
       "codepoint": "F1A59",
       "mdi": "meter-gas"
+    },
+    {
+      "name": "Microphone",
+      "codepoint": "F036C",
+      "mdi": "microphone"
+    },
+    {
+      "name": "Microphone Off",
+      "codepoint": "F036D",
+      "mdi": "microphone-off"
     },
     {
       "name": "Microsoft Xbox",
@@ -1394,6 +1419,11 @@
       "name": "Volume High",
       "codepoint": "F057E",
       "mdi": "volume-high"
+    },
+    {
+      "name": "Volume Off",
+      "codepoint": "F0581",
+      "mdi": "volume-off"
     },
     {
       "name": "Wall Outlet",

@@ -54,6 +54,7 @@ script:
           hide_clock_bar_top_layer_widgets(temperature_labels, 6,
                                            id(display_time),
                                            id(network_status_button));
+          ${voice_clock_bar_hide_code}
           network_status_hide_modal();
 
   - id: clock_bar_apply
@@ -103,6 +104,7 @@ script:
             hide_clock_bar_top_layer_widgets(temperature_labels, 6,
                                              id(display_time),
                                              id(network_status_button));
+            ${voice_clock_bar_hide_code}
             network_status_hide_modal();
             return;
           }
@@ -136,6 +138,7 @@ script:
             lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
             network_status_hide_modal();
           }
+          ${voice_clock_bar_apply_code}
           if (!visible) return;
 
           refresh_clock_bar_temperature_label_values(id(main_page)->obj,
@@ -417,7 +420,6 @@ switch:
     web_server:
       sorting_group_id: sg_screensaver
     on_turn_on:
-      - switch.turn_on: media_player_sleep_prevention_enabled
       - script.execute: cover_art_resubscribe
       - script.execute: cover_art_playback_refresh
     on_turn_off:

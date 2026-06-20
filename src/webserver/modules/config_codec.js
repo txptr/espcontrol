@@ -11,6 +11,23 @@ var CARD_ON_PATTERN_OPTION = "on_pattern";
 
 function normalizeButtonConfig(b) {
   if (b) b.options = b.options || "";
+  if (b && b.type === "local") {
+    b.type = "action";
+    b.sensor = ACTION_CARD_LOCAL_ACTION;
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+    b.icon_on = "Auto";
+    if (!b.icon || b.icon === "Auto" || b.icon === "Flash") b.icon = "Gesture Tap";
+  }
+  if (b && b.type === "local_sensor") {
+    b.type = "sensor";
+    b.sensor = SENSOR_CARD_LOCAL_SENSOR;
+    b.icon_on = "Auto";
+    b.options = "";
+    if (b.precision !== "text" && b.precision !== "1" && b.precision !== "2") b.precision = "";
+    if (b.precision !== "text" && (!b.icon || b.icon === "Auto")) b.icon = "Auto";
+  }
   if (b && b.type === "action" && b.sensor === "vacuum.start") {
     b.type = "vacuum";
     b.sensor = "start_stop";
@@ -122,6 +139,9 @@ function normalizeButtonConfig(b) {
   if (b && b.type === "vacuum") {
     normalizeVacuumConfig(b);
   }
+  if (b && b.type === "lawn_mower") {
+    normalizeLawnMowerConfig(b);
+  }
   if (b && b.type === "screen_lock") {
     b.entity = "";
     b.label = "";
@@ -147,6 +167,12 @@ function normalizeButtonConfig(b) {
     b.precision = "";
     b.options = "";
   }
+  if (b && b.type === "light_control") {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = normalizeLightControlOptions(b.options);
+  }
   if (b && b.type === "subpage") {
     applySubpagePresetConfig(b);
     b.options = normalizeSubpageOptions(b.options, b.sensor, b.precision);
@@ -167,10 +193,23 @@ function normalizeButtonConfig(b) {
     b.icon_on = "Auto";
     b.options = "";
     if (!b.icon || b.icon === "Auto" || b.icon === "Chevron Down") b.icon = "Flash";
+  } else if (b && actionCardIsLocal(b)) {
+    b.unit = "";
+    b.precision = "";
+    b.icon_on = "Auto";
+    b.options = "";
+    if (!b.icon || b.icon === "Auto" || b.icon === "Flash") b.icon = "Gesture Tap";
   } else if (b && b.type === "action") {
     b.options = normalizeActionOptions(b.options, b.sensor);
   }
-  if (b && !b.type) {
+  if (b && sensorCardIsLocal(b)) {
+    b.type = "sensor";
+    b.sensor = SENSOR_CARD_LOCAL_SENSOR;
+    b.icon_on = "Auto";
+    b.options = "";
+    if (b.precision !== "text" && b.precision !== "1" && b.precision !== "2") b.precision = "";
+    if (b.precision !== "text" && (!b.icon || b.icon === "Auto")) b.icon = "Auto";
+  } else if (b && !b.type) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
   } else if (b && b.type === "sensor") {
     b.options = normalizeSensorOptions(b.options, b.precision);
@@ -188,7 +227,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -239,6 +278,7 @@ var IMAGE_ICON_OPTION = "image_icon";
 var IMAGE_MODAL_MODE_OPTION = "image_modal_mode";
 var IMAGE_REFRESH_OPTION = "image_refresh";
 var IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
+var LIGHT_CONTROL_TABS_OPTION = "light_tabs";
 var IMAGE_CARD_LIMIT = Math.max(0, parseInt(CFG && CFG.imageCardLimit != null ? CFG.imageCardLimit : 4, 10) || 0);
 var ALARM_ACTIONS = [
   { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Shield Lock" },
@@ -570,6 +610,64 @@ function setImageRefreshMode(b, value) {
   return b.options;
 }
 
+function lightControlTabDefinitions() {
+  return [
+    { value: "power", label: "Power" },
+    { value: "brightness", label: "Brightness" },
+    { value: "temperature", label: "Colour Temperature" },
+    { value: "color", label: "Colour Presets" },
+  ];
+}
+
+function lightControlDefaultTabs() {
+  return lightControlTabDefinitions().map(function (tab) { return tab.value; });
+}
+
+function normalizeLightControlTabs(value) {
+  var raw = String(value || "").trim();
+  var parts = raw ? raw.split("|") : lightControlDefaultTabs();
+  var definitions = lightControlTabDefinitions();
+  var valid = {};
+  definitions.forEach(function (tab) { valid[tab.value] = true; });
+  var out = [];
+  parts.forEach(function (part) {
+    part = String(part || "").trim();
+    if (valid[part] && out.indexOf(part) < 0) out.push(part);
+  });
+  return out.length ? out : ["power"];
+}
+
+function lightControlTabs(b) {
+  return normalizeLightControlTabs(configOptionValue(b && b.options, LIGHT_CONTROL_TABS_OPTION));
+}
+
+function lightControlTabsAreDefault(tabs) {
+  tabs = normalizeLightControlTabs((tabs || []).join("|"));
+  var defaults = lightControlDefaultTabs();
+  if (tabs.length !== defaults.length) return false;
+  for (var i = 0; i < defaults.length; i++) {
+    if (tabs[i] !== defaults[i]) return false;
+  }
+  return true;
+}
+
+function normalizeLightControlOptions(options) {
+  var tabs = normalizeLightControlTabs(configOptionValue(options, LIGHT_CONTROL_TABS_OPTION));
+  return lightControlTabsAreDefault(tabs)
+    ? ""
+    : setConfigOptionValue("", LIGHT_CONTROL_TABS_OPTION, tabs.join("|"));
+}
+
+function setLightControlTabs(b, tabs) {
+  if (!b) return "";
+  tabs = normalizeLightControlTabs((tabs || []).join("|"));
+  b.options = lightControlTabsAreDefault(tabs)
+    ? setConfigOptionValue(b.options, LIGHT_CONTROL_TABS_OPTION, "")
+    : setConfigOptionValue(b.options, LIGHT_CONTROL_TABS_OPTION, tabs.join("|"));
+  b.options = normalizeLightControlOptions(b.options);
+  return b.options;
+}
+
 function normalizeSubpageKind(value) {
   value = String(value || "").trim();
   return subpagePresetDefaults(value) ? value : "";
@@ -591,6 +689,7 @@ var SUBPAGE_KIND_PRESET_DEFINITIONS = [
   { value: "garage", label: "Garage Door", preset: { label: "Garage", icon: "Garage", entityDomains: ["cover"], placeholder: "e.g. cover.garage_door" } },
   { value: "lock", label: "Lock", preset: { label: "Lock", icon: "Lock", entityDomains: ["lock"], placeholder: "e.g. lock.front_door" } },
   { value: "vacuum", label: "Vacuum", preset: { label: "Vacuum", icon: "Robot Vacuum", entityDomains: ["vacuum"], placeholder: "e.g. vacuum.downstairs" } },
+  { value: "lawn_mower", label: "Lawn Mower", preset: { label: "Lawn Mower", icon: "Robot Mower", entityDomains: ["lawn_mower"], placeholder: "e.g. lawn_mower.backyard" } },
   { value: "weather", label: "Weather", preset: { label: "Weather", icon: "Weather Partly Cloudy", entityDomains: ["weather"], placeholder: "e.g. weather.home" } },
   { value: "sensor", label: "Sensor", preset: { label: "Sensor", icon: "Gauge", entityDomains: ["sensor", "binary_sensor", "text_sensor"], placeholder: "e.g. sensor.open_windows" } },
   { value: "image", label: "Camera/Image", preset: { label: "Camera", icon: "Camera", entityDomains: ["camera", "image"], placeholder: "e.g. camera.front_door" } },
@@ -1026,6 +1125,7 @@ function copyActionCardStateOptions(out, options) {
 }
 
 function normalizeActionOptions(options, action) {
+  if (action === ACTION_CARD_LOCAL_ACTION) return "";
   var out = copyActionCardStateOptions("", options);
   if (action !== "script.turn_on" || !configOptionEnabled(options, SWITCH_CONFIRM_ON_OPTION)) {
     return out;
@@ -1376,21 +1476,31 @@ function buttonConfigFields(b) {
   }
   var isActionOptionSelect = !!(b && (actionCardIsOptionSelect(b) || isOptionSelectType(type)));
   if (isActionOptionSelect) type = "action";
+  if (type === "local") type = "action";
+  if (type === "local_sensor") type = "sensor";
   var label = b && b.label || "";
   if (type === "screen_lock") label = "";
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
-    (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "alarm" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.sensor || "");
-  var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.unit || "");
+    (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+  if (b && b.type === "local") sensor = ACTION_CARD_LOCAL_ACTION;
+  if (b && (b.type === "local_sensor" || sensorCardIsLocal(b))) sensor = SENSOR_CARD_LOCAL_SENSOR;
+  var isLocalAction = type === "action" && sensor === ACTION_CARD_LOCAL_ACTION;
+  var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.unit || "");
+  if (isLocalAction) unit = "";
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
+  if (isLocalAction && (!icon || icon === "Auto" || icon === "Flash")) icon = "Gesture Tap";
   if (type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
   if (type === "screen_lock") icon = "Lock";
   if (type === "alarm_action" && (!icon || icon === "Auto")) icon = (alarmActionInfo(sensor) || alarmActionSpecs()[0]).icon;
   if (isFanCardType(type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(type);
   var iconOn = (isActionOptionSelect || type === "alarm" || type === "alarm_action" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
+  if (isLocalAction) iconOn = "Auto";
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
   if (type === "screen_lock") iconOn = "Lock Open";
-  var precision = (isActionOptionSelect || type === "light_switch" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  var precision = (isActionOptionSelect || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  if (isLocalAction) precision = "";
+  if (sensor === SENSOR_CARD_LOCAL_SENSOR && precision !== "text" && precision !== "1" && precision !== "2") precision = "";
   if (type === "media") {
     sensor = mediaEditorMode(sensor);
     precision = sensor === "now_playing"
@@ -1403,6 +1513,13 @@ function buttonConfigFields(b) {
     precision = "";
     iconOn = "Auto";
     if (!icon || icon === "Auto") icon = vacuumModeDefaultIcon(sensor);
+  }
+  if (type === "lawn_mower") {
+    sensor = normalizeLawnMowerMode(sensor);
+    unit = "";
+    precision = "";
+    iconOn = "Auto";
+    if (!icon || icon === "Auto") icon = lawnMowerModeDefaultIcon(sensor);
   }
   if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
   if (type === "image") {
@@ -1436,21 +1553,23 @@ function buttonConfigFields(b) {
     options = webhookButton.options || "";
   } else if (type === "screen_lock") {
     options = "";
-  } else if (type === "vacuum") {
+  } else if (type === "vacuum" || type === "lawn_mower") {
     options = "";
   } else if (type === "sensor") {
-    options = normalizeSensorOptions(options, precision);
+    options = sensor === SENSOR_CARD_LOCAL_SENSOR ? "" : normalizeSensorOptions(options, precision);
   } else if (type === "door_window") {
     options = normalizeDoorWindowOptions(options);
   } else if (type === "presence") {
     options = normalizePresenceOptions(options);
   } else if (type === "image") {
     options = normalizeImageOptions(options);
+  } else if (type === "light_control") {
+    options = normalizeLightControlOptions(options);
   } else if (type === "action") {
-    options = normalizeActionOptions(options, sensor);
+    options = sensor === ACTION_CARD_LOCAL_ACTION ? "" : normalizeActionOptions(options, sensor);
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
-  } else if (type !== "action" && type !== "alarm_action" && type !== "garage" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
+  } else if (type !== "action" && type !== "alarm_action" && type !== "garage" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "light_control" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
     options = "";
   }
   if (type === "image") {

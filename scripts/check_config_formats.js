@@ -58,6 +58,7 @@ function subpageTypeFromCode(code) {
     CK: "clock",
     T: "timezone",
     S: "sensor",
+    LS: "local_sensor",
     X: "door_window",
     PR: "presence",
     W: "weather",
@@ -76,6 +77,7 @@ function subpageTypeFromCode(code) {
     N: "light_temperature",
     R: "garage",
     K: "lock",
+    LM: "lawn_mower",
     M: "media",
     H: "climate",
     WH: "webhook",
@@ -236,6 +238,7 @@ assert.deepStrictEqual(Array.from(subpageKindOption.values), [
   "garage",
   "lock",
   "vacuum",
+  "lawn_mower",
   "weather",
   "sensor",
   "image",
@@ -244,6 +247,11 @@ assert.strictEqual(
   hooks.subpageKind({ options: "subpage_kind=vacuum" }),
   "vacuum",
   "vacuum subpage type is accepted by the web config normalizer"
+);
+assert.strictEqual(
+  hooks.subpageKind({ options: "subpage_kind=lawn_mower" }),
+  "lawn_mower",
+  "lawn mower subpage type is accepted by the web config normalizer"
 );
 assert.deepStrictEqual(Array.from(hooks.cardContractDomains("climate")), ["climate"], "generated contract exposes card domains");
 assert.deepStrictEqual(buttonShape(hooks.cardContractDefaultConfig("climate")), buttonShape({
@@ -705,6 +713,26 @@ assertButtonRoundTrip(hooks, "large sensor numbers option", {
   precision: "",
   options: "large_numbers",
 }, false);
+
+const localSensorSubtype = {
+  entity: "room_temp",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "local",
+  unit: "°C",
+  type: "sensor",
+  precision: "1",
+  options: "",
+};
+assertButtonRoundTrip(hooks, "local sensor subtype", localSensorSubtype, false);
+assert.strictEqual(hooks.sensorCardIsLocal(localSensorSubtype), true, "local sensor subtype is detected");
+assert.strictEqual(hooks.cardLargeNumbersEnabled({
+  type: "sensor",
+  sensor: "local",
+  precision: "1",
+  options: "large_numbers",
+}), false, "local sensor subtype does not use large sensor numbers");
 
 const iconSensor = hooks.parseButtonConfig(";;;;binary_sensor.patio_door;;sensor;icon;");
 iconSensor.icon = "Door Closed";
@@ -1621,6 +1649,29 @@ assertButtonRoundTrip(hooks, "full light control card", {
   precision: "",
   options: "",
 }, false);
+assertButtonRoundTrip(hooks, "full light control custom tabs", {
+  entity: "light.living_room",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "light_control",
+  precision: "",
+  options: "light_tabs=brightness%7Cpower",
+}, false);
+assert.deepStrictEqual(
+  Array.from(hooks.lightControlTabs({ options: "light_tabs=brightness%7Cpower" })),
+  ["brightness", "power"],
+  "light control tabs preserve custom order");
+assert.strictEqual(
+  hooks.normalizeLightControlOptions("light_tabs=power%7Cbrightness%7Ctemperature%7Ccolor"),
+  "",
+  "default light control tab order is omitted");
+assert.strictEqual(
+  hooks.normalizeLightControlOptions("light_tabs=bad%7Cpower%7Cpower"),
+  "light_tabs=power",
+  "invalid and duplicate light control tabs are removed");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_brightness", false), true, "lights picker visible on parent page");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_brightness", true), true, "lights picker visible in subpages");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_switch", false), false, "light switch subtype hidden from top-level picker");
@@ -2004,6 +2055,18 @@ assertButtonMigration(hooks, "legacy text sensor card", "sensor.washer_state;Was
   precision: "text",
 });
 
+assertButtonMigration(hooks, "legacy local sensor card", "room_temp;Living Room;Auto;Thermometer;;°C;local_sensor;1;large_numbers", {
+  entity: "room_temp",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "local",
+  unit: "°C",
+  type: "sensor",
+  precision: "1",
+  options: "",
+});
+
 assertButtonMigration(hooks, "legacy media controls card", "media_player.living_room;Living Room;Speaker;Auto;controls;;media", {
   entity: "media_player.living_room",
   label: "Living Room",
@@ -2147,6 +2210,32 @@ assertButtonRoundTrip(hooks, "button action card", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "local action subtype card", {
+  entity: "zoom_mute",
+  label: "Zoom Mute",
+  icon: "Gesture Tap",
+  icon_on: "Auto",
+  sensor: "local",
+  unit: "",
+  type: "action",
+  precision: "",
+}, false);
+
+const parsedLocalActionSubtype = hooks.parseButtonConfig("zoom_mute;Zoom Mute;Gesture Tap;Auto;local;;action");
+assert.strictEqual(parsedLocalActionSubtype.type, "action", "local action subtype remains an action card");
+assert.strictEqual(hooks.actionCardIsLocal(parsedLocalActionSubtype), true, "local action subtype is detected");
+
+assertButtonMigration(hooks, "legacy local action card becomes action subtype", "zoom_mute;Zoom Mute;Auto;Auto;;;local;;state_entity=sensor.stale", {
+  entity: "zoom_mute",
+  label: "Zoom Mute",
+  icon: "Gesture Tap",
+  icon_on: "Auto",
+  sensor: "local",
+  unit: "",
+  type: "action",
+  precision: "",
+});
+
 assertButtonMigration(hooks, "legacy vacuum start action card", "vacuum.k11_vacuum_784c;Vacuum Bath;Robot Vacuum;Auto;vacuum.start;;action", {
   entity: "vacuum.k11_vacuum_784c",
   label: "Vacuum Bath",
@@ -2188,6 +2277,35 @@ assertButtonMigration(hooks, "legacy vacuum return to base action card", "vacuum
     type: "vacuum",
     precision: "",
   }, false);
+});
+
+[
+  "status",
+  "start_mowing",
+  "dock",
+  "pause_resume",
+].forEach((mode) => {
+  assertButtonRoundTrip(hooks, `lawn mower ${mode} card`, {
+    entity: "lawn_mower.backyard",
+    label: "Backyard Mower",
+    icon: "Robot Mower",
+    icon_on: "Auto",
+    sensor: mode,
+    unit: "",
+    type: "lawn_mower",
+    precision: "",
+  }, false);
+});
+
+assertButtonMigration(hooks, "invalid lawn mower mode normalizes to start mowing", "lawn_mower.backyard;Backyard Mower;Auto;Auto;bad_mode;;lawn_mower", {
+  entity: "lawn_mower.backyard",
+  label: "Backyard Mower",
+  icon: "Robot Mower",
+  icon_on: "Auto",
+  sensor: "start_mowing",
+  unit: "",
+  type: "lawn_mower",
+  precision: "",
 });
 
 assertButtonRoundTrip(hooks, "input button action card", {

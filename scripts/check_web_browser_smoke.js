@@ -403,6 +403,17 @@ async function assertSettingsPage(page, label, options = {}) {
   assert(appearanceVisible, `${label}: settings content should render`);
   assert.strictEqual(themeVisible, !!options.isEpaper, `${label}: theme selector visibility should match display type`);
   assert.strictEqual(onColorVisible, !options.isEpaper, `${label}: color controls visibility should match display type`);
+  const clockBarCard = page.locator("#sp-settings .card").filter({ hasText: "Clock Bar" }).first();
+  const clockBarText = await clockBarCard.textContent();
+  const voiceServicesCard = page.locator("#sp-settings .card").filter({
+    has: page.locator(".card-header h3", { hasText: /^Voice Services$/ }),
+  }).first();
+  if (options.slug === "esp32-p4-86") {
+    assert(await voiceServicesCard.isVisible(), `${label}: voice services settings card is available for the voice-capable panel`);
+  } else {
+    assert(!clockBarText.includes("Voice Services"), `${label}: voice services toggle is hidden from the clock bar`);
+    assert.strictEqual(await voiceServicesCard.count(), 0, `${label}: voice services settings card is hidden on panels without local voice`);
+  }
   const nightScheduleCard = page.locator("#sp-settings .card").filter({
     has: page.locator(".card-header h3", { hasText: /^Night Schedule$/ }),
   }).first();
@@ -428,8 +439,18 @@ async function assertSettingsPage(page, label, options = {}) {
     );
     assert.strictEqual(
       await page.locator("#sp-set-ss-media-sleep-prevention").count(),
-      0,
-      `${label}: keep-screen-awake option should not render separately`
+      1,
+      `${label}: keep-screen-awake option should render separately`
+    );
+    await coverArtCard.locator("#sp-set-ss-media-sleep-prevention + .sp-toggle-track").click();
+    assert(
+      await coverArtCard.locator("#sp-set-ss-cover-art-player").isVisible(),
+      `${label}: media player entity field should render when keep-screen-awake is enabled`
+    );
+    assert.strictEqual(
+      await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
+      false,
+      `${label}: cover art show-after field should stay hidden until cover art is enabled`
     );
     await coverArtCard.locator("#sp-set-ss-cover-art-enable + .sp-toggle-track").click();
     assert(
@@ -481,6 +502,28 @@ async function assertSettingsPage(page, label, options = {}) {
     await page.locator("#sp-set-sensor-media-player-enable").count(),
     0,
     `${label}: sensor cover art override should not render`
+  );
+  const homeAssistantSettingsCard = page.locator("#sp-settings .card").filter({
+    has: page.locator(".card-header h3", { hasText: /^Home Assistant Settings$/ }),
+  }).first();
+  assert(await homeAssistantSettingsCard.isVisible(), `${label}: Home Assistant settings card should render`);
+  assert(
+    !(await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible()),
+    `${label}: Home Assistant settings card should be collapsed by default`
+  );
+  await homeAssistantSettingsCard.locator(".card-header").click();
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible(),
+    `${label}: Home Assistant port field should render in Home Assistant settings`
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").inputValue(),
+    "8123",
+    `${label}: Home Assistant port field should default to 8123`
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port.sp-input--no-stepper").count() === 1,
+    `${label}: Home Assistant port field should hide browser stepper controls`
   );
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   assert(!overflow, `${label}: settings page has horizontal overflow`);

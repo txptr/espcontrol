@@ -26,6 +26,7 @@ function buttonTypeInfoOnlyVisible(key) {
     "clock",
     "door_window",
     "image",
+    "local_sensor",
     "presence",
     "timezone",
     "weather",
@@ -35,7 +36,7 @@ function buttonTypeInfoOnlyVisible(key) {
 
 var CARD_TYPE_PICKER_DETAILS = {
   "": { icon: "toggle-switch", description: "Toggle lights, switches, helpers, or fans." },
-  action: { icon: "flash", description: "Run a Home Assistant action or service." },
+  action: { icon: "flash", description: "Run a Home Assistant or local action." },
   alarm: { icon: "shield-home", description: "Control or trigger alarm panel actions." },
   calendar: { icon: "calendar-clock", description: "Show date, time, or world clock values." },
   climate: { icon: "thermostat", description: "Show climate status and temperature controls." },
@@ -47,6 +48,8 @@ var CARD_TYPE_PICKER_DETAILS = {
   image: { icon: "image", description: "Display an image card where supported." },
   internal: { icon: "power-plug", description: "Control built-in device relays." },
   light_brightness: { icon: "lightbulb", description: "Configure light switch, brightness, or temperature controls." },
+  lawn_mower: { icon: "robot-mower", description: "Show or control a robotic lawn mower." },
+  local_sensor: { icon: "gauge", description: "Show a sensor value from this device." },
   lock: { icon: "lock", description: "Show and control a lock." },
   media: { icon: "speaker", description: "Control media playback or volume." },
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
@@ -178,7 +181,7 @@ function renderPreview() {
       var iconName = resolveIcon(b);
       var label = b.label || b.entity || "Configure";
       var color = isEpaperPreview() ? epaperPreviewFillColor() :
-        (b.type === "sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
+        (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
         ? state.sensorColor : state.offColor;
       var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
       if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {
