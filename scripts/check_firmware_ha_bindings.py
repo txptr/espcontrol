@@ -1122,8 +1122,23 @@ def firmware_screen_schedule_screensaver_overlay_errors(cover_art_path: Path, ro
 
     if show_body is None:
         errors.append(f"{rel}: missing show_cover_art_view script")
-    elif "lv_obj_move_foreground(id(cover_art_screensaver))" not in show_body:
-        errors.append(f"{rel}: raise the cover art screensaver above any existing top-layer elements")
+    else:
+        if "screen_schedule_blocks_cover_art(" not in show_body:
+            errors.append(f"{rel}: prevent cover art from overriding active screen schedule night mode")
+        if "lv_obj_move_foreground(id(cover_art_screensaver))" not in show_body:
+            errors.append(f"{rel}: raise the cover art screensaver above any existing top-layer elements")
+
+    delay_body = yaml_script_body(text, "cover_art_delay_timer")
+    if delay_body is None:
+        errors.append(f"{rel}: missing cover_art_delay_timer script")
+    elif "screen_schedule_blocks_cover_art(" not in delay_body:
+        errors.append(f"{rel}: keep delayed cover art from starting during screen schedule night mode")
+
+    playback_started_body = yaml_script_body(text, "cover_art_playback_started")
+    if playback_started_body is None:
+        errors.append(f"{rel}: missing cover_art_playback_started script")
+    elif "screen_schedule_blocks_cover_art(" not in playback_started_body:
+        errors.append(f"{rel}: keep playback-start cover art from overriding screen schedule night mode")
 
     return errors
 
@@ -1147,6 +1162,15 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             mode_index != -1 and schedule_index > mode_index
         ):
             errors.append(f"{rel}: let the night screen schedule override timer screensaver actions")
+
+    schedule_off_body = yaml_script_body(text, "backlight_schedule_display_off")
+    if schedule_off_body is None:
+        errors.append(f"{rel}: missing backlight_schedule_display_off script")
+    elif (
+        "script.stop: cover_art_delay_timer" not in schedule_off_body
+        or "script.execute: hide_cover_art_view" not in schedule_off_body
+    ):
+        errors.append(f"{rel}: screen schedule display-off should clear cover art before forcing the screen off")
 
     wake_body = yaml_script_body(text, "screensaver_presence_wake")
     if wake_body is None:

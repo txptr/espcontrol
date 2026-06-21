@@ -474,6 +474,8 @@ script:
             - lvgl.resume:
             - script.execute: clock_bar_hide
             - script.wait: clock_bar_hide
+            - script.stop: cover_art_delay_timer
+            - script.execute: hide_cover_art_view
             - script.execute: hide_clock_view
             - globals.set:
                 id: screensaver_dimmed_active

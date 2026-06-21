@@ -1218,6 +1218,25 @@ script:
     then:
       - if:
           condition:
+            lambda: |-
+              auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+              return screen_schedule_blocks_cover_art(
+                       id(screen_schedule_trigger).state,
+                       id(schedule_enabled).state,
+                       id(presence_detected),
+                       now.is_valid(),
+                       now.is_valid() ? now.hour : 0,
+                       (int) id(schedule_on_hour).state,
+                       (int) id(schedule_off_hour).state);
+          then:
+            - logger.log:
+                level: DEBUG
+                tag: cover_art
+                format: "Skipping cover art while screen schedule night mode is active"
+            - script.execute: hide_cover_art_view
+            - script.stop: show_cover_art_view
+      - if:
+          condition:
             lambda: 'return ${voice_interaction_active_condition};'
           then:
             - logger.log:
@@ -1356,9 +1375,18 @@ script:
           condition:
             lambda: |-
               bool voice_active = ${voice_interaction_active_condition};
+              auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               return id(cover_art_screensaver_enabled).state &&
                      id(cover_art_media_playing) &&
                      !voice_active &&
+                     !screen_schedule_blocks_cover_art(
+                       id(screen_schedule_trigger).state,
+                       id(schedule_enabled).state,
+                       id(presence_detected),
+                       now.is_valid(),
+                       now.is_valid() ? now.hour : 0,
+                       (int) id(schedule_on_hour).state,
+                       (int) id(schedule_off_hour).state) &&
                      id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active)) &&
@@ -2015,7 +2043,16 @@ script:
       - if:
           condition:
             lambda: |-
+              auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               return id(cover_art_screensaver_enabled).state &&
+                     !screen_schedule_blocks_cover_art(
+                       id(screen_schedule_trigger).state,
+                       id(schedule_enabled).state,
+                       id(presence_detected),
+                       now.is_valid(),
+                       now.is_valid() ? now.hour : 0,
+                       (int) id(schedule_on_hour).state,
+                       (int) id(schedule_off_hour).state) &&
                      id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active)) &&
