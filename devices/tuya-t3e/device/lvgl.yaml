@@ -9,7 +9,11 @@ lvgl:
   id: main_lvgl
   setup_priority: 230
   buffer_size: 12%
-  display: my_display
+  
+  # HIER DIE KORREKTUR: 'displays' statt 'display' mit Listen-Strich (-)
+  displays:
+    - display_id: my_display
+  
   rotation: 180
   touchscreen:
     touchscreen_id: my_touchscreen
