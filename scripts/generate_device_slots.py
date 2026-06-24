@@ -469,13 +469,13 @@ def button_slot_macro() -> str:
     )
 
 
-def macro_array(name: str, macro: str, slots: int, per_line: int = 4) -> list[str]:
-    lines = [f"            esphome::text::Text *{name}[] = {{"]
+def macro_array(name: str, macro: str, slots: int, per_line: int = 4, indent: str = "            ") -> list[str]:
+    lines = [f"{indent}esphome::text::Text *{name}[] = {{"]
     values = [f"{macro}({num})" for num in range(1, slots + 1)]
     for idx in range(0, len(values), per_line):
         chunk = ", ".join(values[idx : idx + per_line])
-        lines.append(f"              {chunk},")
-    lines.append("            };")
+        lines.append(f"{indent}  {chunk},")
+    lines.append(f"{indent}}};")
     return lines
 
 
@@ -655,6 +655,54 @@ def refresh_block(device: dict) -> str:
     return "\n".join(lines)
 
 
+def refresh_subpage_arrays(device: dict) -> list[str]:
+    package = device.get("package") or {}
+    subpage_chunks = int(package.get("subpageConfigChunks") or 8)
+    indent = "          "
+    lines = [
+        "          #define SP_CFG(n) subpage_##n##_config",
+        "          #define SP_EXT(n) subpage_##n##_config_ext",
+        "          #define SP_EXT2(n) subpage_##n##_config_ext_2",
+        "          #define SP_EXT3(n) subpage_##n##_config_ext_3",
+    ]
+    if subpage_chunks >= 8:
+        lines.extend(
+            [
+                "          #define SP_EXT4(n) subpage_##n##_config_ext_4",
+                "          #define SP_EXT5(n) subpage_##n##_config_ext_5",
+                "          #define SP_EXT6(n) subpage_##n##_config_ext_6",
+                "          #define SP_EXT7(n) subpage_##n##_config_ext_7",
+            ]
+        )
+    lines.extend(macro_array("sp_cfgs", "SP_CFG", device["slots"], indent=indent))
+    lines.extend(macro_array("sp_ext", "SP_EXT", device["slots"], indent=indent))
+    lines.extend(macro_array("sp_ext2", "SP_EXT2", device["slots"], indent=indent))
+    lines.extend(macro_array("sp_ext3", "SP_EXT3", device["slots"], indent=indent))
+    if subpage_chunks >= 8:
+        lines.extend(macro_array("sp_ext4", "SP_EXT4", device["slots"], indent=indent))
+        lines.extend(macro_array("sp_ext5", "SP_EXT5", device["slots"], indent=indent))
+        lines.extend(macro_array("sp_ext6", "SP_EXT6", device["slots"], indent=indent))
+        lines.extend(macro_array("sp_ext7", "SP_EXT7", device["slots"], indent=indent))
+    lines.extend(
+        [
+            "          #undef SP_CFG",
+            "          #undef SP_EXT",
+            "          #undef SP_EXT2",
+            "          #undef SP_EXT3",
+        ]
+    )
+    if subpage_chunks >= 8:
+        lines.extend(
+            [
+                "          #undef SP_EXT4",
+                "          #undef SP_EXT5",
+                "          #undef SP_EXT6",
+                "          #undef SP_EXT7",
+            ]
+        )
+    return lines
+
+
 def phase2_block(device: dict) -> str:
     package = device.get("package") or {}
     subpage_chunks = int(package.get("subpageConfigChunks") or 8)
@@ -713,6 +761,33 @@ def phase2_block(device: dict) -> str:
 
 def script_block(device: dict) -> str:
     after_refresh = ["      - script.execute: clock_bar_apply"]
+    if device.get("refresh_rebuilds_subpages"):
+        package = device.get("package") or {}
+        subpage_chunks = int(package.get("subpageConfigChunks") or 8)
+        phase2_call = [
+            "          grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,"
+            if subpage_chunks >= 8
+            else "          grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,",
+            "            id(button_order).state,",
+            "            id(button_on_color).state,",
+            "            id(button_off_color).state,",
+            "            id(sensor_card_color).state,",
+            "            id(main_page)->obj);",
+        ]
+        return "\n".join(
+            [
+                "script:",
+                "  - id: refresh_button_grid",
+                "    then:",
+                "      - lambda: |-",
+                refresh_block(device),
+                *refresh_subpage_arrays(device),
+                "          navigation_return_home(id(main_page)->obj);",
+                *phase2_call,
+                *after_refresh,
+                "",
+            ]
+        )
     return "\n".join(
         [
             "script:",

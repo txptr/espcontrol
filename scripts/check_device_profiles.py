@@ -183,6 +183,20 @@ def test_square_s3_reapplies_clock_bar_layout() -> None:
     ) in device, "S3 rotation changes must reapply clock-bar layout"
 
 
+def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
+    slug = "guition-esp32-p4-jc4880p443"
+    sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+    assert "navigation_return_home(id(main_page)->obj);" in sensors, (
+        "4.3-inch P4 rotation refresh must return home before rebuilding subpages"
+    )
+    assert "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7," in sensors, (
+        "4.3-inch P4 rotation refresh must rebuild subpage grids with the current column count"
+    )
+    assert "id(button_on_color).state" in sensors and "id(button_off_color).state" in sensors, (
+        "4.3-inch P4 subpage rebuild must keep configured card colors"
+    )
+
+
 def test_setup_icon_glyphs() -> None:
     glyphs = (ROOT / "common" / "assets" / "icon_glyphs.yaml").read_text(encoding="utf-8")
     for glyph, icon_name in REQUIRED_SETUP_ICON_GLYPHS.items():
@@ -478,6 +492,7 @@ def main() -> int:
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
     test_square_s3_reapplies_clock_bar_layout()
+    test_p4_43_rotation_refresh_rebuilds_subpages()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
     test_weather_card_mode_visibility_reset()

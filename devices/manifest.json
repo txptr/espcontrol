@@ -242,6 +242,7 @@
         "display": {
           "wrapTallLabels": false,
           "imageCardDownloaders": 6,
+          "refreshRebuildsSubpages": true,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
           "subpageChevronTextWidthPercent": 96

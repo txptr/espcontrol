@@ -84,6 +84,12 @@ inline bool navigation_return_home(lv_obj_t *main_page_obj) {
 }
 
 inline void navigation_clear_subpages() {
+  lv_obj_t *active = lv_scr_act();
+  for (auto &entry : navigation_subpages()) {
+    if (entry.screen != nullptr && entry.screen != active) {
+      lv_obj_del(entry.screen);
+    }
+  }
   navigation_subpages().clear();
   clock_bar_clear_button_grid_pages();
 }
