@@ -33,6 +33,7 @@ constexpr lv_coord_t CLIMATE_MODAL_SQUARE_LABELS_DOWN_REF_PX = 18;
 constexpr lv_coord_t CLIMATE_MODAL_4848_LABELS_DOWN_REF_PX = 12;
 constexpr lv_coord_t CLIMATE_MODAL_4848_OPTION_CHIP_W_REF_PX = 160;
 constexpr lv_coord_t CLIMATE_MODAL_4848_OPTION_CHIP_GAP_REF_PX = 12;
+constexpr lv_coord_t CLIMATE_MODAL_P4_86_OPTION_CHIP_W_REF_PX = 280;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 4;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_MIN_H_PX = 56;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_PAD_Y_REF_PX = 6;
@@ -511,6 +512,10 @@ inline bool climate_control_uses_square_modal_tuning(const ControlModalLayout &l
 
 inline bool climate_control_uses_4848_modal_tuning(const ControlModalLayout &layout) {
   return control_modal_uses_4848_tuning(layout);
+}
+
+inline bool climate_control_uses_p4_86_modal_tuning(const ControlModalLayout &layout) {
+  return layout.sw == 720 && layout.sh == 720;
 }
 
 inline bool climate_control_uses_large_landscape_modal_tuning(const ControlModalLayout &layout) {
@@ -1437,10 +1442,12 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   if (ctx->available && !ctx->fan_modes.empty()) visible_chip_count++;
   if (ctx->available && !ctx->swing_modes.empty()) visible_chip_count++;
   lv_coord_t chip_row_w = layout.panel_w * CLIMATE_OPTION_ROW_WIDTH_PERCENT / 100;
+  bool p4_86_square = climate_control_uses_p4_86_modal_tuning(layout);
   lv_coord_t option_chip_w = compensated_width(
     tune_4848 ? CLIMATE_MODAL_4848_OPTION_CHIP_W_REF_PX :
-      (compact_portrait ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_CHIP_W_PX :
-        (layout.short_side < 520 ? (roomy_landscape ? 224 : (medium_landscape ? 240 : 180)) : 240)),
+      (p4_86_square ? CLIMATE_MODAL_P4_86_OPTION_CHIP_W_REF_PX :
+        (compact_portrait ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_CHIP_W_PX :
+          (layout.short_side < 520 ? (roomy_landscape ? 224 : (medium_landscape ? 240 : 180)) : 240))),
     ctx->width_compensation_percent);
   if (compact_portrait && visible_chip_count == 2) {
     lv_coord_t fitted_w = (chip_row_w - chip_gap) / 2;
