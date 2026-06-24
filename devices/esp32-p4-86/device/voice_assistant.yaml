@@ -106,7 +106,6 @@ media_player:
     id: voice_media_player
     name: Voice Media Player
     icon: mdi:speaker
-    codec_support_enabled: true
     buffer_size: 4000000
     task_stack_in_psram: true
     files:
@@ -126,7 +125,7 @@ media_player:
       sample_rate: 48000
     media_pipeline:
       speaker: voice_media_resampling_speaker
-      format: FLAC
+      format: NONE
       sample_rate: 48000
     on_announcement:
       - mixer_speaker.apply_ducking:
