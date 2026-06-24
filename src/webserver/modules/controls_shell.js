@@ -147,7 +147,7 @@ function buildScreenPage(parent) {
   modal.className = "sp-settings-modal";
   var closeBtn = document.createElement("button");
   closeBtn.className = "sp-settings-close";
-  closeBtn.textContent = "x";
+  closeBtn.innerHTML = '<span class="mdi mdi-close" aria-hidden="true"></span>';
   closeBtn.setAttribute("aria-label", "Close settings");
   closeBtn.addEventListener("click", closeSettings);
   modal.appendChild(closeBtn);
