@@ -1069,7 +1069,11 @@ inline void grid_phase2(
   memset(sensor_text_mode, 0, sizeof(sensor_text_mode));
   memset(has_icon_on, 0, sizeof(has_icon_on));
   bump_ha_subscription_generation();
+  reset_calendar_cards();
+  reset_timezone_cards();
   weather_forecast_cancel_pending_requests();
+  reset_weather_forecast_cards();
+  reset_climate_control_refs();
   reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);

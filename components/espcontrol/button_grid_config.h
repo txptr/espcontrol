@@ -2466,14 +2466,7 @@ inline void climate_update_card(ClimateControlCtx *ctx);
 inline void climate_control_set_modal_value(ClimateControlCtx *ctx);
 
 inline void refresh_temperature_unit_labels() {
-  ClimateControlCtx **climate_refs = climate_control_refs();
-  int climate_count = climate_control_ref_count();
-  for (int i = 0; i < climate_count; i++) {
-    climate_update_card(climate_refs[i]);
-    climate_control_set_modal_value(climate_refs[i]);
-  }
   refresh_weather_forecast_card_visuals();
-  if (climate_count > 0) notify_dashboard_content_changed();
 }
 
 inline const char* garage_closed_icon(const std::string &icon) {
