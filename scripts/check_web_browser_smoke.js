@@ -858,8 +858,18 @@ async function assertCoverSettingsPanels(page, label) {
   const modalSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Modal Settings" }).first();
   assert(await cardSettings.isVisible(), `${label}: cover card settings panel should render`);
   assert(await modalSettings.isVisible(), `${label}: cover modal settings panel should render`);
-  assert((await cardSettings.getAttribute("class")).includes("sp-open"), `${label}: cover card settings panel should open by default`);
+  assert(!(await cardSettings.getAttribute("class")).includes("sp-open"), `${label}: cover card settings panel should start collapsed`);
   assert(!(await modalSettings.getAttribute("class")).includes("sp-open"), `${label}: cover modal settings panel should start collapsed`);
+  assert.strictEqual(
+    await page.locator("#sp-inp-cover-interaction").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: cover type selector should sit outside collapsible panels`
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-entity").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: cover entity field should sit outside collapsible panels`
+  );
 
   await modalSettings.locator(".sp-disclosure-button").click();
   assert(await modalSettings.getByText("Controls", { exact: true }).isVisible(), `${label}: cover modal settings panel should contain modal tab controls`);

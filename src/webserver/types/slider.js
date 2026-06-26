@@ -122,15 +122,6 @@ function sliderTypeFactory(opts) {
       var modalSettingsPanel = null;
       var modalSettingsDisclosure = null;
 
-      if (opts.coverControlTabs) {
-        cardSettingsPanel = document.createElement("div");
-        modalSettingsPanel = document.createElement("div");
-        panel.appendChild(inlineDisclosure("Card Settings", cardSettingsPanel, true));
-        modalSettingsDisclosure = inlineDisclosure("Modal Settings", modalSettingsPanel, false);
-        panel.appendChild(modalSettingsDisclosure);
-        panel = cardSettingsPanel;
-      }
-
       function labelField() {
         helpers.renderCardTextField(panel, b, helpers, metadata.labelField);
       }
@@ -275,11 +266,20 @@ function sliderTypeFactory(opts) {
         coverPositionInput.addEventListener("blur", function () { setCoverPosition(this.value); });
       }
 
-      if (opts.renderLabelInSettings && !opts.labelAfterEntity) labelField();
+      if (opts.renderLabelInSettings && !opts.labelAfterEntity && !opts.coverControlTabs) labelField();
 
       helpers.renderCardEntityField(panel, b, helpers, metadata);
 
-      if (opts.renderLabelInSettings && opts.labelAfterEntity) labelField();
+      if (opts.coverControlTabs) {
+        cardSettingsPanel = document.createElement("div");
+        modalSettingsPanel = document.createElement("div");
+        panel.appendChild(inlineDisclosure("Card Settings", cardSettingsPanel, false));
+        modalSettingsDisclosure = inlineDisclosure("Modal Settings", modalSettingsPanel, false);
+        panel.appendChild(modalSettingsDisclosure);
+        panel = cardSettingsPanel;
+      }
+
+      if (opts.renderLabelInSettings && (opts.labelAfterEntity || opts.coverControlTabs)) labelField();
 
       if (opts.coverControlTabs) {
         coverTabsSection = document.createElement("div");
