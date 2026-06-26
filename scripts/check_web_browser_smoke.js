@@ -878,6 +878,11 @@ async function assertCoverSettingsPanels(page, label) {
     0,
     `${label}: cover modal settings panel should not show a Modal Tabs heading`
   );
+  assert.strictEqual(
+    await modalSettings.locator(".sp-light-tab-move").count(),
+    0,
+    `${label}: cover modal settings panel should use drag handles without move chevrons`
+  );
   await page.locator("#sp-inp-cover-interaction").selectOption("toggle");
   await page.waitForFunction(() => {
     var panels = Array.from(document.querySelectorAll(".sp-settings-modal .sp-disclosure"));

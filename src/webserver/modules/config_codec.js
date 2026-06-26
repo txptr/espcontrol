@@ -803,25 +803,6 @@ function renderModalTabSettings(panel, b, helpers, config) {
     renderButtonSettings();
   }
 
-  function updateMoveButtons() {
-    var rows = listRows();
-    rows.forEach(function (row, index) {
-      var down = row.querySelector(".sp-light-tab-move-down");
-      if (down) down.disabled = index === rows.length - 1;
-    });
-  }
-
-  function moveRow(row, direction) {
-    if (!row) return;
-    if (direction < 0 && row.previousElementSibling) {
-      list.insertBefore(row, row.previousElementSibling);
-      saveTabsFromRows();
-    } else if (direction > 0 && row.nextElementSibling) {
-      list.insertBefore(row.nextElementSibling, row);
-      saveTabsFromRows();
-    }
-  }
-
   orderedDefinitions.forEach(function (definition) {
     var tabIndex = tabs.indexOf(definition.value);
     var visible = tabIndex >= 0;
@@ -840,16 +821,7 @@ function renderModalTabSettings(panel, b, helpers, config) {
     drag.setAttribute("aria-label", "Drag " + definition.label);
     drag.tabIndex = -1;
 
-    var downBtn = document.createElement("button");
-    downBtn.type = "button";
-    downBtn.className = "sp-light-tab-move sp-light-tab-move-down mdi mdi-chevron-down";
-    downBtn.setAttribute("aria-label", "Move " + definition.label + " down");
-    downBtn.addEventListener("click", function () {
-      moveRow(row, 1);
-    });
-
     controls.appendChild(drag);
-    controls.appendChild(downBtn);
     row.appendChild(controls);
 
     var label = document.createElement("label");
@@ -908,7 +880,6 @@ function renderModalTabSettings(panel, b, helpers, config) {
     list.appendChild(row);
   });
 
-  updateMoveButtons();
   return section;
 }
 

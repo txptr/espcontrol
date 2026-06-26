@@ -392,13 +392,12 @@ var CSS =
   ".sp-light-tab-row:last-child{border-bottom:0}" +
   ".sp-light-tab-row.sp-dragging{opacity:.55}" +
   ".sp-light-tab-controls{display:inline-flex;align-items:center;gap:2px;color:var(--text3)}" +
-  ".sp-light-tab-move,.sp-light-tab-drag{width:28px;height:28px;border:0;background:transparent;" +
+  ".sp-light-tab-drag{width:28px;height:28px;border:0;background:transparent;" +
   "color:var(--text3);display:inline-flex;align-items:center;justify-content:center;border-radius:8px;" +
   "font-size:18px;line-height:1;font-family:inherit;cursor:pointer;transition:background .2s,color .2s}" +
   ".sp-light-tab-drag{cursor:grab;font-size:20px}" +
   ".sp-light-tab-row.sp-dragging .sp-light-tab-drag{cursor:grabbing}" +
-  ".sp-light-tab-move:hover,.sp-light-tab-drag:hover{background:var(--surface2);color:var(--text)}" +
-  ".sp-light-tab-move:disabled{opacity:.25;cursor:not-allowed;background:transparent;color:var(--text3)}" +
+  ".sp-light-tab-drag:hover{background:var(--surface2);color:var(--text)}" +
   ".sp-light-tab-label{min-width:0;color:var(--text);font-size:.9rem;line-height:1.25;cursor:pointer}" +
 
   ".sp-segment{display:flex;border-radius:var(--action-r);overflow:hidden;border:1px solid var(--border);margin-bottom:14px}" +
