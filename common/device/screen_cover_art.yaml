@@ -767,6 +767,19 @@ script:
                   - if:
                       condition:
                         lambda: |-
+                          return id(cover_art_downloaded_image)->last_error_was_ha_media_proxy_not_found() &&
+                                 id(cover_art_retry_count) < 5 &&
+                                 !id(cover_art_media_player_entity).state.empty();
+                      then:
+                        - lambda: |-
+                            ESP_LOGW("cover_art", "Home Assistant artwork proxy returned 404; requesting fresh artwork attributes");
+                            id(cover_art_cached_remote_url).clear();
+                            id(cover_art_cached_local_url).clear();
+                            id(cover_art_refresh_needed) = true;
+                        - script.execute: cover_art_resubscribe
+                  - if:
+                      condition:
+                        lambda: |-
                           return !id(cover_art_image_available) &&
                                  id(cover_art_loaded_url).empty();
                       then:
