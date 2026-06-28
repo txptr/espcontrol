@@ -605,14 +605,14 @@ inline void fan_control_apply_power(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
   fan_control_style_binary_button(ui.power_on_btn, ctx->on, ctx->on_color, DARK_BACKGROUND_SECONDARY);
-  fan_control_style_binary_button(ui.power_off_btn, !ctx->on, 0xFFFFFF, DARK_BACKGROUND_SECONDARY);
+  fan_control_style_binary_button(ui.power_off_btn, !ctx->on, DARK_BACKGROUND_TERTIARY, DARK_BACKGROUND_SECONDARY);
 }
 
 inline void fan_control_apply_oscillation(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
   fan_control_style_binary_button(ui.oscillation_on_btn, ctx->oscillating, ctx->on_color, DARK_BACKGROUND_SECONDARY);
-  fan_control_style_binary_button(ui.oscillation_off_btn, !ctx->oscillating, 0xFFFFFF, DARK_BACKGROUND_SECONDARY);
+  fan_control_style_binary_button(ui.oscillation_off_btn, !ctx->oscillating, DARK_BACKGROUND_TERTIARY, DARK_BACKGROUND_SECONDARY);
 }
 
 inline void fan_control_apply_direction(FanCardCtx *ctx) {
@@ -653,7 +653,7 @@ inline std::string fan_control_card_title(FanCardCtx *ctx) {
 inline void fan_control_refresh_card(FanCardCtx *ctx) {
   if (!ctx) return;
   fan_apply_card_visual(ctx);
-  if (ctx->label_lbl) lv_label_set_text(ctx->label_lbl, fan_control_card_title(ctx).c_str());
+  transient_status_label_set_steady(ctx->status_label, fan_control_card_title(ctx));
   transient_status_label_show_if_changed(ctx->status_label, fan_status_text(ctx), false);
 }
 
